@@ -1,0 +1,433 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0107D28A02375A585967DE93 /* JitterBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 852C4CE9301E3A5C3E78DF28 /* JitterBuffer.swift */; };
+		0D9B82F44C8E4C9D2BECE9CC /* OpusCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9227F3C9FD27B939B0888E70 /* OpusCodec.swift */; };
+		17AA9902208879EF059C44FA /* PushToTalkController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9E5E87AF7A94BA261EA11A /* PushToTalkController.swift */; };
+		1AB7E02F763AB70693091580 /* RosterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65CA9982E4E8745295013443 /* RosterView.swift */; };
+		3CCE8D6E9CA194ADA74A9925 /* AudioEngineIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7A09074E577F46E08A583F /* AudioEngineIO.swift */; };
+		3F756327C3C0E64AB115C032 /* BLEMeshLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */; };
+		55E5ACB6D726E14B4AAA3819 /* RogerThatCore in Frameworks */ = {isa = PBXBuildFile; productRef = 24E981F9B34DD13828168FEA /* RogerThatCore */; };
+		699120D640061EAF47595F01 /* TalkButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 270DDB5F7C8182E1ED1536C9 /* TalkButton.swift */; };
+		6A9614BB65F817B576A50F67 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407AB00531675A8A30B238D0 /* RootView.swift */; };
+		6D1734EEE265F0920D16A6D4 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72B50E2A58CF744F53D18BED /* AppState.swift */; };
+		730BF9C5EE175A839C036731 /* MultipeerVoiceLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A75B316517ADEBF006D929D /* MultipeerVoiceLink.swift */; };
+		B8821C62D4CEEA17AD641DFC /* TextChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */; };
+		C72E7B400497BCD335509353 /* ChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013AB27B3698C2DA444C657C /* ChannelView.swift */; };
+		D8A6CD9BCFCAB96AE903141F /* RogerThatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188F0612146276232F9210C5 /* RogerThatApp.swift */; };
+		FCA74BF0EA9F1A945DC40816 /* CreateOrJoinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		013AB27B3698C2DA444C657C /* ChannelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelView.swift; sourceTree = "<group>"; };
+		0A9E5E87AF7A94BA261EA11A /* PushToTalkController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushToTalkController.swift; sourceTree = "<group>"; };
+		188F0612146276232F9210C5 /* RogerThatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RogerThatApp.swift; sourceTree = "<group>"; };
+		270DDB5F7C8182E1ED1536C9 /* TalkButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkButton.swift; sourceTree = "<group>"; };
+		396888541F0D5FAE6B139058 /* RogerThat.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RogerThat.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateOrJoinView.swift; sourceTree = "<group>"; };
+		407AB00531675A8A30B238D0 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		65CA9982E4E8745295013443 /* RosterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosterView.swift; sourceTree = "<group>"; };
+		72B50E2A58CF744F53D18BED /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		7979E3CE2321FAD2FD59D756 /* roger-that */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "roger-that"; path = .; sourceTree = SOURCE_ROOT; };
+		7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMeshLink.swift; sourceTree = "<group>"; };
+		852C4CE9301E3A5C3E78DF28 /* JitterBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JitterBuffer.swift; sourceTree = "<group>"; };
+		8D7A09074E577F46E08A583F /* AudioEngineIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngineIO.swift; sourceTree = "<group>"; };
+		9227F3C9FD27B939B0888E70 /* OpusCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpusCodec.swift; sourceTree = "<group>"; };
+		9A75B316517ADEBF006D929D /* MultipeerVoiceLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultipeerVoiceLink.swift; sourceTree = "<group>"; };
+		D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextChannelView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		383F8DCAAD6E97917CDB1FF0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				55E5ACB6D726E14B4AAA3819 /* RogerThatCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		295532FE67410D000E237CCA /* App */ = {
+			isa = PBXGroup;
+			children = (
+				9FE32BA88E3A928BC269FC4A /* RogerThat */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		3C1F67B6229378DB28C4CA62 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				8D7A09074E577F46E08A583F /* AudioEngineIO.swift */,
+				852C4CE9301E3A5C3E78DF28 /* JitterBuffer.swift */,
+				9227F3C9FD27B939B0888E70 /* OpusCodec.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		44448B90CE328BF97D7CB41E /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				013AB27B3698C2DA444C657C /* ChannelView.swift */,
+				3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */,
+				407AB00531675A8A30B238D0 /* RootView.swift */,
+				65CA9982E4E8745295013443 /* RosterView.swift */,
+				270DDB5F7C8182E1ED1536C9 /* TalkButton.swift */,
+				D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		5FCB87E8672364925ABD8BDA /* PTT */ = {
+			isa = PBXGroup;
+			children = (
+				0A9E5E87AF7A94BA261EA11A /* PushToTalkController.swift */,
+			);
+			path = PTT;
+			sourceTree = "<group>";
+		};
+		9FE32BA88E3A928BC269FC4A /* RogerThat */ = {
+			isa = PBXGroup;
+			children = (
+				3C1F67B6229378DB28C4CA62 /* Audio */,
+				5FCB87E8672364925ABD8BDA /* PTT */,
+				CE5F7BEEB894BC55225C2CA3 /* Transports */,
+				44448B90CE328BF97D7CB41E /* UI */,
+				72B50E2A58CF744F53D18BED /* AppState.swift */,
+				188F0612146276232F9210C5 /* RogerThatApp.swift */,
+			);
+			path = RogerThat;
+			sourceTree = "<group>";
+		};
+		A4EC6C14CB05BD016348B660 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				7979E3CE2321FAD2FD59D756 /* roger-that */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		CE5F7BEEB894BC55225C2CA3 /* Transports */ = {
+			isa = PBXGroup;
+			children = (
+				7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */,
+				9A75B316517ADEBF006D929D /* MultipeerVoiceLink.swift */,
+			);
+			path = Transports;
+			sourceTree = "<group>";
+		};
+		D4C19FD6C0FF30516248D196 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				396888541F0D5FAE6B139058 /* RogerThat.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D731517F5E2325A8FC9A76B6 = {
+			isa = PBXGroup;
+			children = (
+				295532FE67410D000E237CCA /* App */,
+				A4EC6C14CB05BD016348B660 /* Packages */,
+				D4C19FD6C0FF30516248D196 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FE6D03D58D9AAAEEC2D3C77D /* RogerThat */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D4D188C054F09A276DB2A0F5 /* Build configuration list for PBXNativeTarget "RogerThat" */;
+			buildPhases = (
+				9AEFAE436C6DCC4A1AB78946 /* Sources */,
+				383F8DCAAD6E97917CDB1FF0 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RogerThat;
+			packageProductDependencies = (
+				24E981F9B34DD13828168FEA /* RogerThatCore */,
+			);
+			productName = RogerThat;
+			productReference = 396888541F0D5FAE6B139058 /* RogerThat.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1471185F0AB06867DB27E1FE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					FE6D03D58D9AAAEEC2D3C77D = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 7D5E6959263CF06FC0F4948B /* Build configuration list for PBXProject "RogerThat" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D731517F5E2325A8FC9A76B6;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				97A3346F35789D8B9F970390 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D4C19FD6C0FF30516248D196 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FE6D03D58D9AAAEEC2D3C77D /* RogerThat */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9AEFAE436C6DCC4A1AB78946 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6D1734EEE265F0920D16A6D4 /* AppState.swift in Sources */,
+				3CCE8D6E9CA194ADA74A9925 /* AudioEngineIO.swift in Sources */,
+				3F756327C3C0E64AB115C032 /* BLEMeshLink.swift in Sources */,
+				C72E7B400497BCD335509353 /* ChannelView.swift in Sources */,
+				FCA74BF0EA9F1A945DC40816 /* CreateOrJoinView.swift in Sources */,
+				0107D28A02375A585967DE93 /* JitterBuffer.swift in Sources */,
+				730BF9C5EE175A839C036731 /* MultipeerVoiceLink.swift in Sources */,
+				0D9B82F44C8E4C9D2BECE9CC /* OpusCodec.swift in Sources */,
+				17AA9902208879EF059C44FA /* PushToTalkController.swift in Sources */,
+				D8A6CD9BCFCAB96AE903141F /* RogerThatApp.swift in Sources */,
+				6A9614BB65F817B576A50F67 /* RootView.swift in Sources */,
+				1AB7E02F763AB70693091580 /* RosterView.swift in Sources */,
+				699120D640061EAF47595F01 /* TalkButton.swift in Sources */,
+				B8821C62D4CEEA17AD641DFC /* TextChannelView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2B9C0E7391200CE31C79D7E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		46F2448F178A222217890364 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		860E65E362092631143F59AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/RogerThat/Resources/RogerThat.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = App/RogerThat/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.YOURTEAM.rogerthat;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E6B9D4E4B958FA3D2B825F98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/RogerThat/Resources/RogerThat.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = App/RogerThat/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.YOURTEAM.rogerthat;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7D5E6959263CF06FC0F4948B /* Build configuration list for PBXProject "RogerThat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				46F2448F178A222217890364 /* Debug */,
+				2B9C0E7391200CE31C79D7E7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D4D188C054F09A276DB2A0F5 /* Build configuration list for PBXNativeTarget "RogerThat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E6B9D4E4B958FA3D2B825F98 /* Debug */,
+				860E65E362092631143F59AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		97A3346F35789D8B9F970390 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		24E981F9B34DD13828168FEA /* RogerThatCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RogerThatCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1471185F0AB06867DB27E1FE /* Project object */;
+}
