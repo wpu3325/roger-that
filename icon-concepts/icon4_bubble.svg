@@ -1,0 +1,27 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF8A2B"/>
+      <stop offset="1" stop-color="#F5432B"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+
+  <!-- speech bubble -->
+  <path d="M286 256
+           h452 a96 96 0 0 1 96 96
+           v258 a96 96 0 0 1 -96 96
+           h-220 l-150 132 v-132
+           h-82 a96 96 0 0 1 -96 -96
+           v-258 a96 96 0 0 1 96 -96 z"
+        fill="#FFF7EE"/>
+
+  <!-- signal waves inside bubble -->
+  <g fill="none" stroke="#F5432B" stroke-linecap="round">
+    <circle cx="512" cy="478" r="34" fill="#F5432B" stroke="none"/>
+    <path d="M598 392 a120 120 0 0 1 0 172" stroke-width="30"/>
+    <path d="M426 392 a120 120 0 0 0 0 172" stroke-width="30"/>
+    <path d="M660 348 a200 200 0 0 1 0 260" stroke-width="30" opacity="0.6"/>
+    <path d="M364 348 a200 200 0 0 0 0 260" stroke-width="30" opacity="0.6"/>
+  </g>
+</svg>

@@ -4,16 +4,20 @@ import RogerThatCore
 
 private let serviceType = "rogerthat-v1"
 
-/// On-demand Multipeer Connectivity link for direct voice delivery.
+/// Multipeer Connectivity link for direct voice delivery.
 ///
-/// Brought up on TALK_START, torn down after TALK_END + a short grace period.
-/// Only carries VOICE_FRAME and TALK_* packets to directly-connected peers.
-final class MultipeerVoiceLink: NSObject, Link {
+/// Uses ONE shared `MCSession` for the whole channel (peers are added to it as they
+/// connect) and an invitation tiebreak so two peers don't both invite each other and
+/// spawn competing sessions. Carries VOICE_FRAME and TALK_* packets.
+///
+/// The link runs for the whole time you're in a channel so you can hear peers the
+/// instant they transmit — it is NOT started/stopped per push-to-talk.
+final class MultipeerVoiceLink: NSObject, Link, @unchecked Sendable {
 
     // MARK: - Link
 
     var peers: [PeerHandle] {
-        lock.withLock { Array(sessions.keys) }
+        lock.withLock { Array(connectedPeers.keys) }
     }
 
     func setHandlers(onReceive: @escaping PacketReceiver, onPeerEvent: @escaping PeerEventHandler) {
@@ -24,55 +28,68 @@ final class MultipeerVoiceLink: NSObject, Link {
     }
 
     func send(_ data: Data, to peer: PeerHandle) {
-        let session = lock.withLock { sessions[peer] }
-        let mcPeer = lock.withLock { peerHandleMap[peer] }
-        guard let s = session, let p = mcPeer else { return }
-        try? s.send(data, toPeers: [p], with: .unreliable)
+        let mcPeer = lock.withLock { connectedPeers[peer] }
+        guard let mcPeer, let session else { return }
+        try? session.send(data, toPeers: [mcPeer], with: .unreliable)
     }
 
     func broadcast(_ data: Data) {
-        for peer in peers { send(data, to: peer) }
+        guard let session else { return }
+        let targets = session.connectedPeers
+        guard !targets.isEmpty else { return }
+        try? session.send(data, toPeers: targets, with: .unreliable)
     }
 
     func start() {
-        let me = MCPeerID(displayName: UIDevice.current.name)
-        localPeer = me
-        advertiser = MCNearbyServiceAdvertiser(peer: me, discoveryInfo: nil, serviceType: serviceType)
-        browser = MCNearbyServiceBrowser(peer: me, serviceType: serviceType)
-        advertiser?.delegate = self
-        browser?.delegate = self
-        advertiser?.startAdvertisingPeer()
-        browser?.startBrowsingForPeers()
+        let session = MCSession(peer: localPeer, securityIdentity: nil, encryptionPreference: .required)
+        session.delegate = self
+        self.session = session
+
+        let advertiser = MCNearbyServiceAdvertiser(peer: localPeer, discoveryInfo: nil, serviceType: serviceType)
+        let browser = MCNearbyServiceBrowser(peer: localPeer, serviceType: serviceType)
+        advertiser.delegate = self
+        browser.delegate = self
+        self.advertiser = advertiser
+        self.browser = browser
+
+        advertiser.startAdvertisingPeer()
+        browser.startBrowsingForPeers()
     }
 
     func stop() {
         advertiser?.stopAdvertisingPeer()
         browser?.stopBrowsingForPeers()
-        lock.withLock { sessions.values.forEach { $0.disconnect() } }
-        lock.withLock { sessions.removeAll() }
+        session?.disconnect()
+        advertiser = nil
+        browser = nil
+        session = nil
+        lock.withLock { connectedPeers.removeAll() }
     }
 
     // MARK: - Internal
 
     let channelIDHash: UInt32
     private let lock = NSLock()
-    private var localPeer: MCPeerID?
+    private let localPeer: MCPeerID
+    private var session: MCSession?
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
 
-    private var sessions: [PeerHandle: MCSession] = [:]
-    private var peerHandleMap: [PeerHandle: MCPeerID] = [:]
+    private var connectedPeers: [PeerHandle: MCPeerID] = [:]
     private var onReceive: PacketReceiver?
     private var onPeerEvent: PeerEventHandler?
 
-    init(channelIDHash: UInt32) {
+    init(channelIDHash: UInt32, localID: UInt32) {
         self.channelIDHash = channelIDHash
+        // MCPeerID displayName must be unique per device so handles don't collide and
+        // the invitation tiebreak is deterministic. The user-facing name comes from the
+        // BLE presence roster, not from here.
+        self.localPeer = MCPeerID(displayName: "RT-\(localID)")
+        super.init()
     }
 
-    private func makeSession(for peer: MCPeerID) -> MCSession {
-        let s = MCSession(peer: localPeer ?? peer, securityIdentity: nil, encryptionPreference: .required)
-        s.delegate = self
-        return s
+    private func handle(for peer: MCPeerID) -> PeerHandle {
+        PeerHandle("mc-\(peer.displayName)")
     }
 }
 
@@ -81,12 +98,6 @@ final class MultipeerVoiceLink: NSObject, Link {
 extension MultipeerVoiceLink: MCNearbyServiceAdvertiserDelegate {
     func advertiser(_ a: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peer: MCPeerID,
                     withContext: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
-        let session = makeSession(for: peer)
-        let handle = PeerHandle("mc-\(peer.displayName)")
-        lock.withLock {
-            sessions[handle] = session
-            peerHandleMap[handle] = peer
-        }
         invitationHandler(true, session)
     }
 }
@@ -96,22 +107,16 @@ extension MultipeerVoiceLink: MCNearbyServiceAdvertiserDelegate {
 extension MultipeerVoiceLink: MCNearbyServiceBrowserDelegate {
     func browser(_ b: MCNearbyServiceBrowser, foundPeer peer: MCPeerID,
                  withDiscoveryInfo info: [String: String]?) {
-        let session = makeSession(for: peer)
-        let handle = PeerHandle("mc-\(peer.displayName)")
-        lock.withLock {
-            sessions[handle] = session
-            peerHandleMap[handle] = peer
+        guard let session else { return }
+        // Tiebreak: only the peer with the larger token invites, so we don't both
+        // invite each other and create competing sessions that never stabilize.
+        if localPeer.displayName > peer.displayName {
+            b.invitePeer(peer, to: session, withContext: nil, timeout: 15)
         }
-        b.invitePeer(peer, to: session, withContext: nil, timeout: 10)
     }
 
     func browser(_ b: MCNearbyServiceBrowser, lostPeer peer: MCPeerID) {
-        let handle = PeerHandle("mc-\(peer.displayName)")
-        lock.withLock {
-            sessions.removeValue(forKey: handle)
-            peerHandleMap.removeValue(forKey: handle)
-        }
-        lock.withLock { onPeerEvent }?(handle, .disconnected)
+        // Connection teardown is handled by session(_:peer:didChange:).
     }
 }
 
@@ -119,14 +124,23 @@ extension MultipeerVoiceLink: MCNearbyServiceBrowserDelegate {
 
 extension MultipeerVoiceLink: MCSessionDelegate {
     func session(_ session: MCSession, peer: MCPeerID, didChange state: MCSessionState) {
-        let handle = PeerHandle("mc-\(peer.displayName)")
-        let event: PeerEvent = state == .connected ? .connected : .disconnected
-        lock.withLock { onPeerEvent }?(handle, event)
+        let h = handle(for: peer)
+        switch state {
+        case .connected:
+            lock.withLock { connectedPeers[h] = peer }
+            lock.withLock { onPeerEvent }?(h, .connected)
+        case .notConnected:
+            lock.withLock { connectedPeers[h] = nil }
+            lock.withLock { onPeerEvent }?(h, .disconnected)
+        case .connecting:
+            break
+        @unknown default:
+            break
+        }
     }
 
     func session(_ session: MCSession, didReceive data: Data, fromPeer peer: MCPeerID) {
-        let handle = PeerHandle("mc-\(peer.displayName)")
-        lock.withLock { onReceive }?(data, handle)
+        lock.withLock { onReceive }?(data, handle(for: peer))
     }
 
     func session(_ s: MCSession, didReceive stream: InputStream, withName: String, fromPeer: MCPeerID) {}
@@ -135,7 +149,3 @@ extension MultipeerVoiceLink: MCSessionDelegate {
     func session(_ s: MCSession, didFinishReceivingResourceWithName: String, fromPeer: MCPeerID,
                  at: URL?, withError: Error?) {}
 }
-
-// MARK: - UIDevice import
-
-import UIKit

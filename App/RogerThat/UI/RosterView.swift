@@ -22,6 +22,9 @@ struct RosterView: View {
             }
         }
         .listStyle(.plain)
+        .refreshable {
+            await appState.refreshRoster()
+        }
         .overlay {
             if appState.members.isEmpty {
                 ContentUnavailableView(

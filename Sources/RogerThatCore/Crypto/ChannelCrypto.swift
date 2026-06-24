@@ -29,7 +29,7 @@ public final class ChannelCrypto: Sendable {
     }
 
     public func encrypt(_ plaintext: Data) throws -> Data {
-        let nonce = try ChaChaPoly.Nonce()
+        let nonce = ChaChaPoly.Nonce()
         let sealed = try ChaChaPoly.seal(plaintext, using: key, nonce: nonce)
         // nonce(12) + ciphertext + tag(16)
         var out = Data(sealed.nonce)

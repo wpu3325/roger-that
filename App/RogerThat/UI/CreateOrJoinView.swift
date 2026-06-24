@@ -2,26 +2,39 @@ import SwiftUI
 import CoreImage.CIFilterBuiltins
 import RogerThatCore
 
-/// Entry screen: create a new channel (shows QR + short code) or join an existing one.
 struct CreateOrJoinView: View {
     @EnvironmentObject var appState: AppState
-    @State private var displayName = ""
-    @State private var joinCode = ""
+    @AppStorage("rogerthat.callSign") private var displayName = ""
+    @State private var callSignDraft = ""
+    @State private var isEditingCallSign = false
     @State private var showJoinSheet = false
     @State private var errorMessage: String?
     @State private var createdChannel: Channel?
     @State private var createdCode: String?
+    @State private var showHelp = false
+    @FocusState private var callSignFocused: Bool
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 32) {
-                Text("Roger That")
-                    .font(.largeTitle.bold())
+                HStack {
+                    Spacer()
+                    Text("Roger That")
+                        .font(.largeTitle.bold())
+                    Spacer()
+                    Button { showHelp = true } label: {
+                        Image(systemName: "questionmark.circle")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal)
 
-                TextField("Your name", text: $displayName)
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .padding(.horizontal)
+                callSignField
+
+                if let err = errorMessage {
+                    Text(err).foregroundStyle(.red).font(.caption)
+                }
 
                 if let ch = createdChannel, let code = createdCode {
                     createdChannelCard(ch, code: code)
@@ -39,17 +52,71 @@ struct CreateOrJoinView: View {
             .sheet(isPresented: $showJoinSheet) {
                 JoinSheet(displayName: displayName)
             }
+            .sheet(isPresented: $showHelp) {
+                HelpView()
+            }
         }
     }
 
     // MARK: - Subviews
 
+    @ViewBuilder
+    private var callSignField: some View {
+        if displayName.isEmpty || isEditingCallSign {
+            HStack(spacing: 8) {
+                TextField("Call sign", text: $callSignDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.words)
+                    .focused($callSignFocused)
+                    .onSubmit { commitCallSign() }
+                    .onAppear {
+                        callSignDraft = displayName
+                        if displayName.isEmpty { callSignFocused = true }
+                    }
+                Button("Done") {
+                    commitCallSign()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(callSignDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal)
+        } else {
+            HStack(spacing: 10) {
+                Text(displayName)
+                    .font(.title3.bold())
+                    .foregroundStyle(.primary)
+                Button {
+                    callSignDraft = displayName
+                    isEditingCallSign = true
+                    callSignFocused = true
+                } label: {
+                    Image(systemName: "pencil.circle")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    private func commitCallSign() {
+        let trimmed = callSignDraft.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        displayName = trimmed
+        isEditingCallSign = false
+        callSignFocused = false
+    }
+
     private var createButton: some View {
         Button {
+            commitCallSign()
             guard !displayName.trimmingCharacters(in: .whitespaces).isEmpty else {
-                errorMessage = "Enter your name first."
+                errorMessage = "Enter your call sign first."
                 return
             }
+            callSignFocused = false
+            errorMessage = nil
             let channel = Channel.create()
             let payload = JoinPayload(channel: channel)
             let code = (try? payload.encode()) ?? ""
@@ -66,7 +133,7 @@ struct CreateOrJoinView: View {
 
     private func createdChannelCard(_ channel: Channel, code: String) -> some View {
         VStack(spacing: 16) {
-            Text("Share this to invite others")
+            Text("Show this QR to invite others")
                 .font(.headline)
 
             if let qrImage = generateQR(from: code) {
@@ -77,10 +144,18 @@ struct CreateOrJoinView: View {
                     .frame(width: 200, height: 200)
             }
 
-            Text(code)
-                .font(.system(.caption, design: .monospaced))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            Text(channelTag(channel.channelIDHash))
+                .font(.system(.title2, design: .monospaced).bold())
+                .tracking(6)
+                .foregroundStyle(.secondary)
+
+            Button {
+                UIPasteboard.general.string = code
+            } label: {
+                Label("Copy invite code", systemImage: "doc.on.doc")
+            }
+            .buttonStyle(.bordered)
+            .font(.subheadline)
 
             Button("Join This Channel") {
                 appState.join(channel: channel, displayName: displayName)
@@ -96,8 +171,9 @@ struct CreateOrJoinView: View {
 
     private var joinButton: some View {
         Button {
+            commitCallSign()
             guard !displayName.trimmingCharacters(in: .whitespaces).isEmpty else {
-                errorMessage = "Enter your name first."
+                errorMessage = "Enter your call sign first."
                 return
             }
             showJoinSheet = true
@@ -110,7 +186,13 @@ struct CreateOrJoinView: View {
         .padding(.horizontal)
     }
 
-    // MARK: - QR generation
+    // MARK: - Helpers
+
+    /// 8-char hex tag from the channel hash, e.g. "A3F7·B248".
+    private func channelTag(_ hash: UInt32) -> String {
+        let hex = String(format: "%08X", hash)
+        return "\(hex.prefix(4))·\(hex.suffix(4))"
+    }
 
     private func generateQR(from string: String) -> UIImage? {
         let filter = CIFilter.qrCodeGenerator()
@@ -138,10 +220,33 @@ private struct JoinSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                Text("Enter the join code or scan QR")
-                    .font(.headline)
+                Button {
+                    showScanner = true
+                } label: {
+                    Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .fullScreenCover(isPresented: $showScanner) {
+                    QRScannerView {
+                        showScanner = false
+                        joinWithCode($0)
+                    } onCancel: {
+                        showScanner = false
+                    }
+                    .ignoresSafeArea()
+                }
 
-                TextField("Join code", text: $code)
+                HStack {
+                    Rectangle().frame(height: 1).foregroundStyle(.quaternary)
+                    Text("or paste invite code").font(.caption).foregroundStyle(.secondary)
+                    Rectangle().frame(height: 1).foregroundStyle(.quaternary)
+                }
+                .padding(.horizontal)
+
+                TextField("Paste invite code", text: $code)
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
                     .autocapitalization(.none)
@@ -154,16 +259,9 @@ private struct JoinSheet: View {
                 Button("Join") {
                     joinWithCode(code)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .controlSize(.large)
                 .disabled(code.isEmpty)
-
-                // MARK: QR scanner placeholder
-                // TODO: integrate AVCaptureSession-based QR scanner.
-                // For now users type the code manually.
-                Button("Scan QR (TODO)") { }
-                    .buttonStyle(.bordered)
-                    .disabled(true)
             }
             .padding()
             .navigationTitle("Join Channel")

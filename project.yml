@@ -1,21 +1,17 @@
 name: RogerThat
 
-# HUMAN: Replace com.YOURTEAM with your actual Apple Developer Team ID prefix,
-# e.g. com.acme.rogerthat. The bundle ID must be registered in the portal with
-# the Push to Talk capability enabled.
-
 options:
-  bundleIdPrefix: com.YOURTEAM  # HUMAN: change this
+  bundleIdPrefix: com.wilsonpu
   deploymentTarget:
-    iOS: "16.0"
-  xcodeVersion: "15.0"
+    iOS: "17.0"
+  xcodeVersion: "16.0"
   groupSortPosition: top
   createIntermediateGroups: true
 
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
     ENABLE_TESTABILITY: YES
 
@@ -27,7 +23,7 @@ targets:
   RogerThat:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: App/RogerThat
         excludes:
@@ -37,6 +33,7 @@ targets:
       path: App/RogerThat/Resources/Info.plist
       properties:
         # Privacy usage strings — required; app crashes on iOS without these
+        NSCameraUsageDescription: "Roger That uses the camera to scan QR codes when joining a channel."
         NSMicrophoneUsageDescription: "Roger That uses the microphone to transmit your voice during push-to-talk."
         NSBluetoothAlwaysUsageDescription: "Roger That uses Bluetooth to discover and relay messages to nearby devices."
         NSLocalNetworkUsageDescription: "Roger That uses the local network to send voice and messages directly to nearby devices."
@@ -57,29 +54,27 @@ targets:
 
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
+
+        # Portrait-only; declaring full screen silences the "all orientations" validation.
+        UIRequiresFullScreen: true
 
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
 
     entitlements:
       path: App/RogerThat/Resources/RogerThat.entitlements
-      properties:
-        # HUMAN: Enable "Push to Talk" capability in Xcode Signing & Capabilities
-        # before running on device.  Without this, PTChannelManager calls crash.
-        com.apple.developer.push-to-talk: true
-        # HUMAN: Change to 'production' before App Store submission.
-        aps-environment: development
 
     dependencies:
       - package: RogerThatCore
         product: RogerThatCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.YOURTEAM.rogerthat  # HUMAN: change this
-        DEVELOPMENT_TEAM: ""                                # HUMAN: set your Team ID
-        CODE_SIGN_STYLE: Manual                             # HUMAN: switch to Automatic once Team is set
+        PRODUCT_BUNDLE_IDENTIFIER: com.wilsonpu.rogerthat
+        DEVELOPMENT_TEAM: "TPYY95V67H"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        # Icon Composer file App/RogerThat/roger-that-icon.icon (name without extension).
+        ASSETCATALOG_COMPILER_APPICON_NAME: roger-that-icon
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
       configs:

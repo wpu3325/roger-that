@@ -4,3 +4,6 @@
 *.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
 *.resolved
+
+# Local SwiftPM/Xcode state
+.swiftpm/

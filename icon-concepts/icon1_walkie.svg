@@ -1,0 +1,27 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF8A2B"/>
+      <stop offset="1" stop-color="#F5432B"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+
+  <!-- antenna -->
+  <line x1="432" y1="316" x2="432" y2="168" stroke="#FFF7EE" stroke-width="36" stroke-linecap="round"/>
+  <circle cx="432" cy="160" r="26" fill="#FFF7EE"/>
+
+  <!-- radio body -->
+  <rect x="330" y="300" width="364" height="470" rx="64" fill="#FFF7EE"/>
+
+  <!-- screen -->
+  <rect x="392" y="362" width="240" height="118" rx="28" fill="#F5432B"/>
+  <!-- speaker grille -->
+  <g stroke="#F5432B" stroke-width="30" stroke-linecap="round">
+    <line x1="404" y1="556" x2="620" y2="556"/>
+    <line x1="404" y1="624" x2="620" y2="624"/>
+    <line x1="404" y1="692" x2="560" y2="692"/>
+  </g>
+  <!-- talk knob -->
+  <circle cx="600" cy="692" r="30" fill="#F5432B"/>
+</svg>

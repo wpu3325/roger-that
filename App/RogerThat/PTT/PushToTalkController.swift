@@ -23,7 +23,6 @@ final class PushToTalkController: NSObject {
         onFloorStateChange?(.talkingLocal)
 
         sendTalkStart()
-        voiceLink.start()
         try? audioEngine.startCapture()
 
         audioEngine.onEncodedFrame = { [weak self] frame in
@@ -38,11 +37,8 @@ final class PushToTalkController: NSObject {
 
         audioEngine.stopCapture()
         sendTalkEnd()
-
-        // Tear down voice link after a short grace period so late frames drain.
-        DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.voiceLink.stop()
-        }
+        // The voice link stays up for the whole channel session (managed by AppState),
+        // so peers remain connected and can hear the next person who talks.
     }
 
     // MARK: - Init

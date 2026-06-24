@@ -1,11 +1,11 @@
 import SwiftUI
 import RogerThatCore
 
-/// Large push-and-hold PTT button; also supports tap-to-toggle accessibility mode.
+/// Large push-and-hold PTT button; also supports tap-to-toggle mode.
+/// isToggleMode is persisted so the Action Button and on-screen button share the same mode.
 struct TalkButton: View {
     @EnvironmentObject var appState: AppState
-    @State private var isToggleMode = false
-    @State private var toggled = false
+    @AppStorage("rogerthat.pttToggleMode") private var isToggleMode = false
 
     private var isTalking: Bool {
         if case .talkingLocal = appState.floorState { return true }
@@ -14,7 +14,6 @@ struct TalkButton: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // Accessibility toggle
             Toggle("Tap-to-toggle mode", isOn: $isToggleMode)
                 .font(.caption)
                 .tint(.accentColor)
@@ -24,26 +23,39 @@ struct TalkButton: View {
             } else {
                 holdButton
             }
-
-            // TODO: Map hardware volume buttons to PTT.
-            // The AVAudioSession route-change approach cannot be done without
-            // a physical device and an active audio session.
         }
+        .onChange(of: isTalking) { _, talking in
+            let haptic = UIImpactFeedbackGenerator(style: talking ? .medium : .light)
+            haptic.impactOccurred()
+        }
+    }
+
+    // MARK: - Shared button face
+
+    private func buttonFace(size: CGFloat = 120) -> some View {
+        Circle()
+            .fill(isTalking ? Color.green : Color.accentColor)
+            .frame(width: size, height: size)
+            .overlay {
+                if isTalking {
+                    VoiceWaveformView(level: CGFloat(appState.voiceLevel),
+                                      color: .white,
+                                      maxBarHeight: size * 0.42,
+                                      barWidth: size * 0.05)
+                } else {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: size * 0.37))
+                        .foregroundStyle(.white)
+                }
+            }
+            .scaleEffect(isTalking ? 1.1 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isTalking)
     }
 
     // MARK: - Press-and-hold
 
     private var holdButton: some View {
-        Circle()
-            .fill(isTalking ? Color.green : Color.accentColor)
-            .frame(width: 120, height: 120)
-            .overlay {
-                Image(systemName: isTalking ? "waveform" : "mic.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.white)
-            }
-            .scaleEffect(isTalking ? 1.12 : 1.0)
-            .animation(.spring(duration: 0.15), value: isTalking)
+        buttonFace()
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
@@ -60,22 +72,14 @@ struct TalkButton: View {
 
     private var tapToggleButton: some View {
         Button {
-            if toggled {
+            if isTalking {
                 appState.pttController?.stopTalking()
             } else {
                 appState.pttController?.startTalking()
             }
-            toggled.toggle()
         } label: {
-            Circle()
-                .fill(toggled ? Color.green : Color.accentColor)
-                .frame(width: 120, height: 120)
-                .overlay {
-                    Image(systemName: toggled ? "waveform" : "mic.fill")
-                        .font(.system(size: 44))
-                        .foregroundStyle(.white)
-                }
+            buttonFace()
         }
-        .accessibilityLabel(toggled ? "Tap to stop talking" : "Tap to start talking")
+        .accessibilityLabel(isTalking ? "Tap to stop talking" : "Tap to start talking")
     }
 }

@@ -16,6 +16,7 @@ public final class SessionManager: @unchecked Sendable {
     private let crypto: ChannelCrypto
 
     private var onMessageReceived: (@Sendable (ReceivedMessage) -> Void)?
+    private var onRosterChanged: (@Sendable () -> Void)?
     private let lock = NSLock()
 
     /// Presence beacon interval.
@@ -43,12 +44,25 @@ public final class SessionManager: @unchecked Sendable {
         router.setMessageHandler { [weak self] msg in
             self?.handleMessage(msg)
         }
+
+        // When a transport peer connects, announce ourselves right away so we appear
+        // in their roster immediately instead of after the next 15s beacon.
+        router.setPeerConnectedHandler { [weak self] in
+            self?.broadcastPresence()
+        }
     }
 
     // MARK: - Public API
 
     public func start() {
+        // Show ourselves in the roster immediately (RosterView marks this "(you)").
+        roster.upsert(id: localID, displayName: displayName)
         schedulePresenceBeacon()
+    }
+
+    /// Broadcast a presence beacon now (e.g. on pull-to-refresh) so peers re-announce.
+    public func announcePresence() {
+        broadcastPresence()
     }
 
     public func stop() {
@@ -65,8 +79,17 @@ public final class SessionManager: @unchecked Sendable {
         lock.withLock { onMessageReceived = handler }
     }
 
+    /// Fired whenever the roster changes (a presence beacon was received).
+    public func setRosterChangedHandler(_ handler: @escaping @Sendable () -> Void) {
+        lock.withLock { onRosterChanged = handler }
+    }
+
     public var activeMembers: [Member] { roster.activeMembersSnapshot() }
     public var floorState: FloorState { floor.state }
+
+    public func setFloorStateHandler(_ handler: @escaping @Sendable (FloorState) -> Void) {
+        floor.setStateChangeHandler(handler)
+    }
 
     // MARK: - Private
 
@@ -75,6 +98,8 @@ public final class SessionManager: @unchecked Sendable {
         case .presence:
             if let name = String(data: msg.plaintext, encoding: .utf8) {
                 roster.upsert(id: msg.packet.senderID, displayName: name)
+                let handler = lock.withLock { onRosterChanged }
+                handler?()
             }
         case .text:
             let handler = lock.withLock { onMessageReceived }
@@ -92,7 +117,7 @@ public final class SessionManager: @unchecked Sendable {
 
     private func schedulePresenceBeacon() {
         let timer = DispatchSource.makeTimerSource(queue: .global())
-        timer.schedule(deadline: .now(), repeating: 15)
+        timer.schedule(deadline: .now(), repeating: 10)
         timer.setEventHandler { [weak self] in self?.broadcastPresence() }
         timer.resume()
         presenceTimer = timer
@@ -100,6 +125,6 @@ public final class SessionManager: @unchecked Sendable {
 
     private func broadcastPresence() {
         guard let data = displayName.data(using: .utf8) else { return }
-        router.send(text: data)
+        router.send(presence: data)
     }
 }

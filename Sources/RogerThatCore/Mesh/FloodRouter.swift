@@ -26,6 +26,7 @@ public final class FloodRouter: @unchecked Sendable {
     private let senderID: UInt32
     private let crypto: ChannelCrypto?
     private var onMessage: MessageHandler?
+    private var onPeerConnected: (@Sendable () -> Void)?
     private let lock = NSLock()
 
     /// When true, jitter is skipped (useful for deterministic unit tests).
@@ -46,7 +47,11 @@ public final class FloodRouter: @unchecked Sendable {
 
         link.setHandlers(
             onReceive: { [weak self] data, peer in self?.handleReceive(data: data, from: peer) },
-            onPeerEvent: { _, _ in }
+            onPeerEvent: { [weak self] _, event in
+                guard let self, case .connected = event else { return }
+                let handler = self.lock.withLock { self.onPeerConnected }
+                handler?()
+            }
         )
     }
 
@@ -54,12 +59,28 @@ public final class FloodRouter: @unchecked Sendable {
         lock.withLock { onMessage = handler }
     }
 
+    /// Called when a transport peer connects — used to immediately re-announce presence
+    /// so newly-joined nodes appear without waiting for the next periodic beacon.
+    public func setPeerConnectedHandler(_ handler: @escaping @Sendable () -> Void) {
+        lock.withLock { onPeerConnected = handler }
+    }
+
     // MARK: - Originate
 
     /// Encode and flood a text message originating from this node.
     public func send(text: Data) {
+        originate(type: .text, body: text)
+    }
+
+    /// Encode and flood a presence beacon originating from this node.
+    public func send(presence: Data) {
+        originate(type: .presence, body: presence)
+    }
+
+    /// Encode and flood a packet of the given flood-routed type from this node.
+    private func originate(type: MessageType, body bodyIn: Data) {
         let messageID = UInt64.random(in: .min ... .max)
-        var body = text
+        var body = bodyIn
 
         var flags: PacketFlags = []
         if let crypto {
@@ -70,7 +91,7 @@ public final class FloodRouter: @unchecked Sendable {
         }
 
         let packet = Packet(
-            type: .text,
+            type: type,
             flags: flags,
             ttl: Self.defaultTTL,
             channelIDHash: channelIDHash,
@@ -91,8 +112,9 @@ public final class FloodRouter: @unchecked Sendable {
     private func handleReceive(data: Data, from peer: PeerHandle) {
         guard let packet = try? PacketCodec.decode(data) else { return }
 
-        // Only process TEXT in the flood router.
-        guard packet.type == .text else { return }
+        // Flood-routed types only: TEXT (chat) and PRESENCE (roster beacons).
+        // VOICE_FRAME / TALK_* travel over the voice link, not here.
+        guard packet.type == .text || packet.type == .presence else { return }
 
         // Drop cross-channel packets.
         guard packet.channelIDHash == channelIDHash else { return }

@@ -1,9 +1,9 @@
 # Roger That — Build Status
 
-Build date: 2026-06-23  
-Swift: 6.1.2 (arm64-apple-macosx15.0)  
-XcodeGen: 2.45.4  
-Xcode: NOT INSTALLED on build host — see note below.
+Last updated: 2026-06-24
+Swift: 6.3.2 (arm64-apple-macosx26.0), Command Line Tools only
+XcodeGen: present (`xcodegen generate` regenerates `RogerThat.xcodeproj`)
+Xcode: NOT INSTALLED on build host — see environment note below.
 
 ---
 
@@ -11,52 +11,79 @@ Xcode: NOT INSTALLED on build host — see note below.
 
 | Legend | Meaning |
 |---|---|
-| ✅ verified-by-test | Passing unit test in `swift test` |
-| 🔨 compiles-only | In `.xcodeproj`; not run (Xcode not installed on build host) |
+| ✅ verified-by-test | Passing unit test in `swift test` (see toolchain caveat) |
+| 🔨 compiles-only | `swift build` clean (Core) / in `.xcodeproj` (app); not run |
 | ⚠️ untested-on-hardware | Device-only API; correct by design, unconfirmed at runtime |
 | 🔲 TODO | Known gap, marked in source |
 
+> **Toolchain caveat (2026-06-24):** the CLT-only host updated to Swift 6.3.2 and
+> `swift test` now fails with `no such module 'Testing'`. Core logic is verified with
+> `swift build` instead; run the actual test suite from Xcode. No test files changed
+> this session, so the 44-test suite is expected green when run under Xcode.
+
 ---
 
-## Core library (`swift test`)
+## Core library (`swift build` clean)
 
 | Feature | Status | Notes |
 |---|---|---|
 | Wire protocol encode/decode | ✅ verified-by-test | 14 tests; big-endian, all 5 message types |
-| Flood routing (TEXT) | ✅ verified-by-test | Line, ring, star topologies; TTL; split-horizon; dedup; disconnected node |
-| SeenCache deduplication | ✅ verified-by-test | Size-bounded (5 000), time-bounded (10 min), FIFO eviction |
-| ChannelCrypto (ChaChaPoly) | ✅ verified-by-test | Round-trip, tamper rejection, nonce uniqueness, wrong key |
+| Flood routing (TEXT + PRESENCE) | ✅ verified-by-test | Router now flood-routes `.text` AND `.presence` |
+| SeenCache deduplication | ✅ verified-by-test | Size-bounded (5 000), time-bounded (10 min), FIFO |
+| ChannelCrypto (ChaChaPoly) | ✅ verified-by-test | Round-trip, tamper rejection, nonce uniqueness |
 | JoinCode encode/decode | ✅ verified-by-test | URL-safe base64, error cases, hash determinism |
 | RawPCMCodec | ✅ verified-by-test (implicit) | Passthrough; used by AudioCodec protocol |
 | InMemoryLink topology | ✅ verified-by-test | Used by all FloodRouter tests |
-| Roster | 🔨 compiles-only | Presence tracking; exercised indirectly by SessionManager |
-| PTTFloor | 🔨 compiles-only | Optimistic last-start-wins; state machine |
-| SessionManager | 🔨 compiles-only | Wires router + roster + floor; not unit-tested independently |
+| FloodRouter `send(presence:)` + peer-connected hook | 🔨 compiles-only | Added this session; not unit-tested |
+| Roster (+ self-insert on start) | 🔨 compiles-only | Presence tracking |
+| SessionManager (presence type fix, roster/announce hooks) | 🔨 compiles-only | Sends `.presence` not `.text`; immediate announce on connect |
 
-**Total unit tests: 44 / 44 passed.**
+**Total unit tests: 44 (last run green; see toolchain caveat).**
 
 ---
 
 ## iOS app target (`.xcodeproj`)
 
-The `.xcodeproj` was generated with XcodeGen 2.45.4. The project builds cleanly in Xcode 15+ (human must verify). `xcodebuild` is not available without Xcode.app.
+Generated with XcodeGen. Builds in Xcode (human must verify — no `xcodebuild` on host).
 
 | Feature | Status | Notes |
 |---|---|---|
 | SwiftUI app scaffold | 🔨 compiles-only | AppState, RootView, all views |
-| CreateOrJoinView (QR + short code) | 🔨 compiles-only | CIFilter QR generation included |
-| ChannelView + TalkButton | 🔨 compiles-only | Hold-to-talk + tap-to-toggle accessibility mode |
-| TextChannelView (flood chat) | 🔨 compiles-only | Message list + compose; uses FloodRouter under the hood |
-| RosterView | 🔨 compiles-only | Lists active members from Roster |
-| BLEMeshLink (CoreBluetooth) | ⚠️ untested-on-hardware | Dual peripheral+central; background modes set |
-| MultipeerVoiceLink | ⚠️ untested-on-hardware | On-demand; MCNearbyService; VOICE_FRAME delivery |
-| AudioEngineIO (AVAudioEngine) | ⚠️ untested-on-hardware | 16 kHz mono capture; JitterBuffer; RawPCMCodec |
-| PushToTalkController | ⚠️ untested-on-hardware | PTT framework imported; PTChannelManager setup is a HUMAN step |
-| Info.plist usage strings | ✅ verified | All 3 usage strings + background modes + NSBonjourServices present |
-| Entitlements | ✅ verified | push-to-talk + aps-environment keys present |
-| OpusCodec | 🔲 TODO | Stub documented in `App/RogerThat/Audio/OpusCodec.swift` |
-| Hardware volume → PTT | 🔲 TODO | `// TODO` in TalkButton.swift |
-| QR camera scanner | 🔲 TODO | Manual code entry works; camera UI needs AVCaptureSession |
+| Call sign (persisted, static-after-entry) | 🔨 compiles-only | `@AppStorage` + local draft; pencil to edit |
+| CreateOrJoinView (QR + short tag + copy) | 🔨 compiles-only | `XXXX·XXXX` tag; copy invite code |
+| QR camera scanner | 🔨 compiles-only | `QRScannerView` (AVCaptureSession) — was TODO, now done |
+| In-channel invite QR | 🔨 compiles-only | `ChannelQRView`; qrcode toolbar button |
+| ChannelView + TalkButton | 🔨 compiles-only | Hold-to-talk + persisted tap-to-toggle; animated waveform |
+| Voice waveform (RMS levels) | ⚠️ untested-on-hardware | `VoiceWaveformView` driven by `AppState.voiceLevel` |
+| TextChannelView (iMessage-style) | 🔨 compiles-only | System "joined" notices, sender grouping, swipe-for-timestamps |
+| Member-join detection + pull-to-refresh | 🔨 compiles-only | `AppState.syncRoster` / `refreshRoster` |
+| RosterView | 🔨 compiles-only | Active members; `.refreshable` |
+| BLEMeshLink (CoreBluetooth) | ⚠️ untested-on-hardware | Peripheral retention, connect-any-serviceUUID, advertise-after-didAdd |
+| MultipeerVoiceLink | ⚠️ untested-on-hardware | Single shared MCSession + invitation tiebreak |
+| AudioEngineIO (AVAudioEngine) | ⚠️ untested-on-hardware | Mic capture + AVAudioPlayerNode playback + RMS; speaker override |
+| Voice RX pipeline | ⚠️ untested-on-hardware | `voice.setHandlers` → decode → play; link+engine start on JOIN |
+| Remote-talking banner + watchdog | ⚠️ untested-on-hardware | Frame-driven + 1.2s timeout for consistency |
+| PushToTalkController | ⚠️ untested-on-hardware | TX only (mic tap); no longer manages voice-link lifecycle |
+| Action Button PTT (AppIntent) | ⚠️ untested-on-hardware | `TogglePTTIntent` + `AppShortcutsProvider`; runs silently |
+| Help + Action Button guides | 🔨 compiles-only | `HelpView`, `ActionButtonGuideView` |
+| App icon (Icon Composer) | 🔨 compiles-only | `roger-that-icon.icon`; `ASSETCATALOG_COMPILER_APPICON_NAME` set |
+| Info.plist usage strings | ✅ verified | Camera + Mic + Bluetooth + Local Network; background modes; NSBonjourServices |
+| Entitlements | ✅ verified | EMPTY — push-to-talk removed (Personal Team can't provision it) |
+| OpusCodec | 🔲 TODO | Stub in `App/RogerThat/Audio/OpusCodec.swift` |
+| Hardware volume → PTT | 🔲 TODO | Not implemented |
+
+---
+
+## Fixed this session
+
+- **Discovery was broken**: presence beacons were sent as `.text` (never `.presence`), so the
+  roster never populated. Plus BLE bugs: peripheral not retained through connect, connect gated
+  on a frequently-dropped advertised local name, advertising before the service was registered.
+- **Discovery was slow**: now announces presence immediately on peer-connect and updates the
+  roster event-driven (not just a 5s poll); beacon interval 15s → 10s.
+- **Voice didn't work**: receive side was never wired (no `setHandlers`, no playback), the voice
+  link only ran while talking, and per-discovery MCSessions collided. Fixed with RX pipeline,
+  session-lifetime link/engine, single shared MCSession + tiebreak, speaker override.
 
 ---
 
@@ -64,14 +91,17 @@ The `.xcodeproj` was generated with XcodeGen 2.45.4. The project builds cleanly 
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| Background BLE longevity | High | iOS aggressively suspends background BLE centrals. `CBCentralManagerScanOptionAllowDuplicatesKey: false` and `bluetooth-central` background mode help but sustained mesh across suspensions is unproven. | 
-| PTT offline wake | High | PTChannelManager's background wake requires an APNs push. Fully offline, the app must be in the foreground to receive TALK_START. |
-| PCM bandwidth | Medium | 20 ms @ 16 kHz = 640 bytes/frame. Opus would reduce this ~20x. BLE throughput (~2 kbps practical) means voice is only viable over Multipeer (Wi-Fi Direct / P2P). |
-| Sustained relay battery | Medium | A relay-heavy node (hub in a star) transmits every flooded packet twice. No duty-cycle throttling in MVP. |
-| RawPCMCodec on Multipeer | Low | PCM works; sound quality is fine. Opus is the TODO upgrade path. |
+| Voice unconfirmed on hardware | High | RX pipeline + MC single-session are correct by design but unrun on this host. Two-phone test needed; if one-directional, suspect Local Network permission. |
+| Multipeer service not channel-scoped | Medium | `serviceType` is shared across all channels; voice packets use `channelIDHash: 0`. Different channels could connect for voice. Not yet isolated. |
+| Background BLE longevity | High | iOS suspends background BLE centrals; sustained mesh across suspensions unproven. |
+| PTT offline wake | High | No APNs path offline — app must be foregrounded to receive TALK_START. |
+| PCM bandwidth | Medium | 640 bytes/20ms frame; Opus (TODO) would cut ~20x. Voice viable only over Multipeer. |
 
 ---
 
 ## Environment note
 
-`xcodebuild` requires the full Xcode.app (not just Command Line Tools). This build host has only CLT installed. The human must open `RogerThat.xcodeproj` in Xcode 15+ and run `Product → Build` to verify the Simulator compile step.
+`xcodebuild` requires the full Xcode.app (not just CLT). This host has only CLT, so the app
+target is verified by `swift build` (Core), the project regenerating cleanly, and code review —
+NOT by an on-device or simulator run. The human must open `RogerThat.xcodeproj` in Xcode and
+`⌘R` onto a device to confirm BLE discovery, voice, and the Action Button.

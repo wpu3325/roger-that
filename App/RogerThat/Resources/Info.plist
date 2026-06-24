@@ -25,6 +25,8 @@
 		<string>_rogerthat-v1._tcp</string>
 		<string>_rogerthat-v1._udp</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Roger That uses the camera to scan QR codes when joining a channel.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Roger That uses the local network to send voice and messages directly to nearby devices.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -43,11 +45,11 @@
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>
