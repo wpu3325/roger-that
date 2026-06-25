@@ -1,5 +1,4 @@
 import Foundation
-import QuartzCore
 @preconcurrency import AVFoundation
 import RogerThatCore
 
@@ -15,9 +14,20 @@ private let sampleRate: Double = 16_000
 /// have to be talking to hear others. Capture (the mic tap) is installed only while
 /// PTT is held.
 ///
+/// Frame ordering / reordering / loss detection lives upstream in
+/// `RogerThatCore.VoiceJitterBuffer`; this class just turns its decisions into scheduled
+/// audio: `playEncoded` for a real frame, `playConcealment` to bridge a lost one.
+///
 /// Default codec: RawPCMCodec (PCM passthrough).
-/// HUMAN: Replace with OpusCodec once libopus is integrated.
-final class AudioEngineIO {
+/// HUMAN: Replace with OpusCodec once libopus is integrated (it also supplies real PLC,
+/// at which point `playConcealment` can call the decoder's concealment path).
+///
+/// `@unchecked Sendable` (matching the transports): TX state (`txAccumulator`,
+/// `captureConverter`) is touched only on the audio render thread; RX/PLC state
+/// (`lastPCM`, `consecutiveConceals`) and the notification observers run on the main
+/// queue. The two don't share mutable state, and AVAudioEngine scheduling is internally
+/// thread-safe.
+final class AudioEngineIO: @unchecked Sendable {
 
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
@@ -36,43 +46,30 @@ final class AudioEngineIO {
     var onOutputLevel: ((Float) -> Void)?
 
     private var captureConverter: AVAudioConverter?
-    /// Leftover converted PCM that didn't fill a whole 20 ms frame; prepended next callback
-    /// so every emitted frame is exactly `frameBytes` (consistent frames = crisp playback).
+    /// Leftover converted PCM that didn't fill a whole 20 ms frame; carried into the next
+    /// callback so every emitted frame is exactly `frameBytes` (consistent frames = crisp).
     private var txAccumulator = Data()
     private var sessionActive = false
 
-    // MARK: - Playback jitter buffer
+    /// Last real PCM frame played, reused to conceal a dropped frame (cheap PLC).
+    private var lastPCM: Data?
+    private var consecutiveConceals = 0
 
-    /// Frames are scheduled the instant they arrive only once a small lead is built up;
-    /// otherwise network jitter drains the player node between frames and the audio
-    /// breaks up. We prime `jitterPrimeFrames` (~60 ms) before starting, and re-prime
-    /// after any gap so each new talk burst rebuilds its cushion.
-    private var jitterPending: [AVAudioPCMBuffer] = []
-    private var jitterPrimed = false
-    private var lastFrameTime: CFTimeInterval = 0
-    private let jitterPrimeFrames = 3
-    private let jitterGapSeconds: CFTimeInterval = 0.4
-
-    private var routeObserver: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
 
     // MARK: - Session lifecycle (whole channel)
 
     /// Bring up the audio session + player node so we can hear peers immediately.
     func startSession() {
         guard !sessionActive else { return }
+        registerObservers()
         do {
-            try configureAudioSession()
-            observeRouteChanges()
-            if !engine.attachedNodes.contains(player) {
-                engine.attach(player)
-            }
-            engine.connect(player, to: engine.mainMixerNode, format: format)
-            _ = engine.inputNode            // pull the input node into the graph
-            engine.prepare()
-            try engine.start()
-            player.play()
+            try activateAndStart()
             sessionActive = true
         } catch {
+            // Mic may not be granted yet, or another app holds the session. Leave inactive;
+            // the next playEncoded/startCapture retries, and the interruption/route observers
+            // recover once the system frees the session.
             sessionActive = false
         }
     }
@@ -81,18 +78,30 @@ final class AudioEngineIO {
         engine.inputNode.removeTap(onBus: 0)
         captureConverter = nil
         txAccumulator.removeAll()
-        resetPlayback()
+        lastPCM = nil
+        consecutiveConceals = 0
         player.stop()
         engine.stop()
         if engine.attachedNodes.contains(player) {
             engine.detach(player)
         }
-        if let routeObserver {
-            NotificationCenter.default.removeObserver(routeObserver)
-            self.routeObserver = nil
-        }
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers.removeAll()
         deactivateAudioSession()
         sessionActive = false
+    }
+
+    /// Core bring-up shared by initial start and post-interruption recovery.
+    private func activateAndStart() throws {
+        try configureAudioSession()
+        if !engine.attachedNodes.contains(player) {
+            engine.attach(player)
+        }
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        _ = engine.inputNode            // pull the input node into the graph
+        engine.prepare()
+        try engine.start()
+        player.play()
     }
 
     // MARK: - Capture (TX) — half-duplex while PTT is held
@@ -124,42 +133,38 @@ final class AudioEngineIO {
 
     // MARK: - Playback (RX)
 
-    /// Decode an incoming compressed frame and schedule it for playback.
+    /// Decode an incoming frame and schedule it. Frames arrive here already ordered by the
+    /// upstream jitter buffer, so we schedule immediately — the playout cushion is the
+    /// buffer's prime depth, not a delay here.
     func playEncoded(_ encoded: Data) {
         guard let pcm = try? codec.decode(frame: encoded),
               let buffer = makeBuffer(from: pcm) else { return }
         if !sessionActive { startSession() }
+        if !player.isPlaying { player.play() }
+        lastPCM = pcm
+        consecutiveConceals = 0
+        player.scheduleBuffer(buffer, completionHandler: nil)
         onOutputLevel?(Self.rmsLevel(pcm))
-
-        let now = CACurrentMediaTime()
-        if now - lastFrameTime > jitterGapSeconds { resetPlayback() }   // new burst → re-prime
-        lastFrameTime = now
-
-        if jitterPrimed {
-            schedule(buffer)
-            return
-        }
-        // Building the initial cushion: hold frames until we have a lead, then release.
-        jitterPending.append(buffer)
-        if jitterPending.count >= jitterPrimeFrames {
-            jitterPrimed = true
-            if !player.isPlaying { player.play() }
-            for pending in jitterPending { schedule(pending) }
-            jitterPending.removeAll()
-        }
     }
 
-    /// Drop the jitter cushion so the next frame starts a fresh burst.
-    private func resetPlayback() {
-        jitterPending.removeAll()
-        jitterPrimed = false
+    /// Bridge a dropped frame so the cadence (and the talking indicator) stays intact.
+    /// Cheap PLC: replay the last frame at decaying gain for a frame or two, then silence.
+    /// Opus's decoder PLC will replace this once integrated.
+    func playConcealment() {
+        guard sessionActive else { return }
+        consecutiveConceals += 1
+        let pcm: Data
+        if let last = lastPCM, consecutiveConceals <= 2 {
+            pcm = Self.scaled(last, gain: consecutiveConceals == 1 ? 0.6 : 0.3)
+        } else {
+            pcm = Data(count: frameBytes)   // silence after a sustained drop
+        }
+        guard let buffer = makeBuffer(from: pcm) else { return }
+        if !player.isPlaying { player.play() }
+        player.scheduleBuffer(buffer, completionHandler: nil)
     }
 
     // MARK: - Private
-
-    private func schedule(_ buffer: AVAudioPCMBuffer) {
-        player.scheduleBuffer(buffer, completionHandler: nil)
-    }
 
     private func makeBuffer(from pcm: Data) -> AVAudioPCMBuffer? {
         let frames = UInt32(pcm.count / MemoryLayout<Int16>.size)
@@ -173,6 +178,18 @@ final class AudioEngineIO {
             }
         }
         return buffer
+    }
+
+    /// Scale a 16-bit PCM frame by a linear gain (for concealment fade).
+    private static func scaled(_ pcm: Data, gain: Float) -> Data {
+        var out = pcm
+        out.withUnsafeMutableBytes { raw in
+            let samples = raw.bindMemory(to: Int16.self)
+            for i in 0..<samples.count {
+                samples[i] = Int16(max(-32768, min(32767, Float(samples[i]) * gain)))
+            }
+        }
+        return out
     }
 
     private func encodeAndSend(buffer: AVAudioPCMBuffer, converter: AVAudioConverter) {
@@ -242,23 +259,67 @@ final class AudioEngineIO {
         try? session.overrideOutputAudioPort(.speaker)
     }
 
-    /// iOS can yank the route back to the earpiece on interruptions/category nudges.
-    /// Re-assert the loudspeaker, but only when we're actually stuck on the built-in
-    /// receiver — never steal the route from plugged-in headphones or Bluetooth.
-    private func observeRouteChanges() {
-        guard routeObserver == nil else { return }
-        routeObserver = NotificationCenter.default.addObserver(
-            forName: AVAudioSession.routeChangeNotification,
-            object: nil,
-            queue: .main
+    private func deactivateAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    // MARK: - Resilience
+
+    /// Without these, voice silently dies after a phone call, Siri, a route change, or a
+    /// media-services reset — the engine stops and never comes back until you rejoin.
+    private func registerObservers() {
+        guard observers.isEmpty else { return }
+        let center = NotificationCenter.default
+
+        // Route yanked back to the earpiece (e.g. on a category nudge): re-assert the
+        // speaker, but only when actually stuck on the built-in receiver, so we never
+        // steal the route from headphones or Bluetooth.
+        observers.append(center.addObserver(
+            forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
         ) { _ in
             let session = AVAudioSession.sharedInstance()
             let onReceiver = session.currentRoute.outputs.contains { $0.portType == .builtInReceiver }
             if onReceiver { try? session.overrideOutputAudioPort(.speaker) }
-        }
+        })
+
+        // Phone call / Siri / other audio: pause on .began, rebuild on .ended.
+        observers.append(center.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self,
+                  let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+            if type == .ended { self.restartEngine() }
+        })
+
+        // A config change (route/format) stops the engine; reconnect and restart it.
+        observers.append(center.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            self?.restartEngine()
+        })
+
+        // Media services reset: the whole audio stack was torn down — rebuild from scratch.
+        observers.append(center.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.restartEngine()
+        })
     }
 
-    private func deactivateAudioSession() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    /// Re-activate the session and bring the engine + player back if they stopped.
+    private func restartEngine() {
+        guard sessionActive else { return }
+        do {
+            try configureAudioSession()
+            engine.connect(player, to: engine.mainMixerNode, format: format)
+            if !engine.isRunning {
+                engine.prepare()
+                try engine.start()
+            }
+            if !player.isPlaying { player.play() }
+        } catch {
+            // Couldn't recover yet; a later frame or notification will try again.
+        }
     }
 }

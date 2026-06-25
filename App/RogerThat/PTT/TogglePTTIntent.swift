@@ -15,7 +15,8 @@ struct TogglePTTIntent: AppIntent {
                   appState.channel != nil else { return }
             if case .talkingLocal = appState.floorState {
                 appState.pttController?.stopTalking()
-            } else {
+            } else if appState.canStartTalking {
+                // Half-duplex: don't cut in while a peer holds the floor.
                 appState.pttController?.startTalking()
             }
         }

@@ -12,6 +12,12 @@ struct TalkButton: View {
         return false
     }
 
+    /// A peer holds the floor — block local TX (half-duplex) and dim the button.
+    private var isRemoteTalking: Bool {
+        if case .talkingRemote = appState.floorState { return true }
+        return false
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             Toggle("Tap-to-toggle mode", isOn: $isToggleMode)
@@ -56,15 +62,19 @@ struct TalkButton: View {
 
     private var holdButton: some View {
         buttonFace()
+            .opacity(isRemoteTalking ? 0.4 : 1)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
-                        if !isTalking { appState.pttController?.startTalking() }
+                        if !isTalking && appState.canStartTalking {
+                            appState.pttController?.startTalking()
+                        }
                     }
                     .onEnded { _ in
                         appState.pttController?.stopTalking()
                     }
             )
+            .allowsHitTesting(!isRemoteTalking)
             .accessibilityLabel(isTalking ? "Release to stop" : "Hold to talk")
     }
 
@@ -74,12 +84,14 @@ struct TalkButton: View {
         Button {
             if isTalking {
                 appState.pttController?.stopTalking()
-            } else {
+            } else if appState.canStartTalking {
                 appState.pttController?.startTalking()
             }
         } label: {
             buttonFace()
+                .opacity(isRemoteTalking ? 0.4 : 1)
         }
+        .disabled(isRemoteTalking)
         .accessibilityLabel(isTalking ? "Tap to stop talking" : "Tap to start talking")
     }
 }

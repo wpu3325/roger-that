@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0107D28A02375A585967DE93 /* JitterBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 852C4CE9301E3A5C3E78DF28 /* JitterBuffer.swift */; };
 		0D9B82F44C8E4C9D2BECE9CC /* OpusCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9227F3C9FD27B939B0888E70 /* OpusCodec.swift */; };
 		17AA9902208879EF059C44FA /* PushToTalkController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9E5E87AF7A94BA261EA11A /* PushToTalkController.swift */; };
 		1AB7E02F763AB70693091580 /* RosterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65CA9982E4E8745295013443 /* RosterView.swift */; };
@@ -53,7 +52,6 @@
 		7979E3CE2321FAD2FD59D756 /* roger-that */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "roger-that"; path = .; sourceTree = SOURCE_ROOT; };
 		7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMeshLink.swift; sourceTree = "<group>"; };
 		7FF31972EA69CFDBC59620D2 /* PTTIntentBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTTIntentBridge.swift; sourceTree = "<group>"; };
-		852C4CE9301E3A5C3E78DF28 /* JitterBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JitterBuffer.swift; sourceTree = "<group>"; };
 		88DADADF42F560D6EFED3906 /* Feedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Feedback.swift; sourceTree = "<group>"; };
 		8C5B6703F23C2CF3107B420F /* ChannelQRView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelQRView.swift; sourceTree = "<group>"; };
 		8D7A09074E577F46E08A583F /* AudioEngineIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngineIO.swift; sourceTree = "<group>"; };
@@ -98,7 +96,6 @@
 			children = (
 				8D7A09074E577F46E08A583F /* AudioEngineIO.swift */,
 				88DADADF42F560D6EFED3906 /* Feedback.swift */,
-				852C4CE9301E3A5C3E78DF28 /* JitterBuffer.swift */,
 				9227F3C9FD27B939B0888E70 /* OpusCodec.swift */,
 			);
 			path = Audio;
@@ -277,7 +274,6 @@
 				FCA74BF0EA9F1A945DC40816 /* CreateOrJoinView.swift in Sources */,
 				8477CBABC288830740CB7B8B /* Feedback.swift in Sources */,
 				6EDF014837EABFB177090E03 /* HelpView.swift in Sources */,
-				0107D28A02375A585967DE93 /* JitterBuffer.swift in Sources */,
 				730BF9C5EE175A839C036731 /* MultipeerVoiceLink.swift in Sources */,
 				0D9B82F44C8E4C9D2BECE9CC /* OpusCodec.swift in Sources */,
 				D6B5427A8B500A61424C5339 /* PTTIntentBridge.swift in Sources */,

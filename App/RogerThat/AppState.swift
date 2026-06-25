@@ -30,6 +30,16 @@ final class AppState: ObservableObject {
     /// Clears the remote-talking banner if voice frames stop arriving.
     private var voiceWatchdog: Task<Void, Never>?
 
+    /// Reorders incoming voice frames, drops dups, and flags losses for concealment.
+    private let voiceJitter = VoiceJitterBuffer()
+
+    /// False while a peer holds the floor — PTT is half-duplex, so we block local TX to
+    /// avoid two people transmitting over each other and garbling the audio.
+    var canStartTalking: Bool {
+        if case .talkingRemote = floorState { return false }
+        return true
+    }
+
     /// This device's persistent random ID.
     let localID: UInt32 = {
         let key = "rogerthat.deviceID"
@@ -156,6 +166,7 @@ final class AppState: ObservableObject {
         voiceLink?.stop()
         audioEngine?.stopSession()
         audioEngine = nil
+        voiceJitter.reset()
         voiceWatchdog?.cancel()
         voiceWatchdog = nil
         voiceLevel = 0
@@ -188,18 +199,34 @@ final class AppState: ObservableObject {
         guard let packet = try? PacketCodec.decode(data) else { return }
         switch packet.type {
         case .voiceFrame:
-            // body = [sessionID u32][seq u32][encoded frame]
-            guard packet.body.count > 8 else { return }
-            let frame = Data(packet.body.dropFirst(8))
-            audioEngine?.playEncoded(frame)
+            // body = [sessionID u32 BE][seq u32 BE][encoded frame]
+            let body = Data(packet.body)
+            guard body.count >= 8 else { return }
+            let sessionID = Self.bigEndianUInt32(body[0..<4])
+            let seq = Self.bigEndianUInt32(body[4..<8])
+            let payload = Data(body[8...])
+            // Run through the jitter buffer: it returns frames in order, plus concealment
+            // for any it judges lost, so playback stays crisp under reordering/loss.
+            for output in voiceJitter.enqueue(VoiceFrame(sessionID: sessionID, seq: seq, payload: payload)) {
+                switch output {
+                case .play(let frame): audioEngine?.playEncoded(frame)
+                case .conceal:         audioEngine?.playConcealment()
+                }
+            }
             showRemoteTalking(senderID: packet.senderID)
         case .talkStart:
             showRemoteTalking(senderID: packet.senderID)
         case .talkEnd:
+            voiceJitter.reset()
             endRemoteTalking(senderID: packet.senderID)
         default:
             break
         }
+    }
+
+    /// Read a big-endian UInt32 from a 4-byte slice (slice indices may not start at 0).
+    private static func bigEndianUInt32(_ bytes: Data) -> UInt32 {
+        bytes.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
     }
 
     /// Show the remote-talking banner and (re)arm a watchdog. The banner is driven by

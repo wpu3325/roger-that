@@ -46,10 +46,10 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 
 ## Testing
 
-44 unit tests across 4 suites — all in `Tests/RogerThatCoreTests/`:
+52 unit tests across 5 suites — all in `Tests/RogerThatCoreTests/`:
 
 ```bash
-swift test               # run all 44 tests
+swift test               # run all 52 tests
 swift test --filter PacketCodec   # run one suite
 ```
 
@@ -135,12 +135,13 @@ requires the full Xcode.app; it's not available from CLT-only installs.
 - **Opus**: not integrated. Default is `RawPCMCodec` (640 bytes/frame @ 16kHz).
   Stub is in `App/RogerThat/Audio/OpusCodec.swift`.
 
-- **Voice RX needs three things wired**: (1) `voice.setHandlers(onReceive:)` in `AppState`
-  to decode VOICE_FRAME/TALK_* off the Multipeer link, (2) `AudioEngineIO` playback via an
-  `AVAudioPlayerNode` (`startSession`/`playEncoded`), (3) the voice link + audio engine
-  started on channel JOIN — not on PTT. A listener who never talks must still advertise/browse
-  and run the engine, or no Multipeer connection forms and nothing plays. PTT only installs
-  the mic tap (TX); it must NOT start/stop the voice link.
+- **Voice RX needs four things wired**: (1) `voice.setHandlers(onReceive:)` in `AppState`
+  to decode VOICE_FRAME/TALK_* off the Multipeer link, (2) `RogerThatCore.VoiceJitterBuffer`
+  to reorder/dedup/conceal incoming frames before playback, (3) `AudioEngineIO` playback via
+  an `AVAudioPlayerNode` (`startSession`/`playEncoded`/`playConcealment`), (4) the voice link
+  + audio engine started on channel JOIN — not on PTT. A listener who never talks must still
+  advertise/browse and run the engine, or no Multipeer connection forms and nothing plays.
+  PTT only installs the mic tap (TX); it must NOT start/stop the voice link.
 
 - **Voice frame body layout**: `[sessionID u32 BE][seq u32 BE][encoded frame]`. VOICE/TALK
   packets use `channelIDHash: 0` and bypass the flood router (they go direct over Multipeer).
@@ -163,13 +164,30 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   then `overrideOutputAudioPort(.speaker)`. A `routeChangeNotification` observer re-asserts
   the speaker ONLY when stuck on `.builtInReceiver` (so it won't steal headphones/Bluetooth).
 
-- **Crisp voice = two fixes in `AudioEngineIO`**: (1) the capture `AVAudioConverter` input
-  block must feed the source buffer once then return `.noDataNow` — returning the same buffer
-  on every re-request double-consumes samples and garbles audio; (2) emit fixed 320-sample
-  (640-byte) frames via a TX accumulator, and on RX prime a ~60ms jitter buffer (re-primed
-  after a >0.4s gap) before scheduling, or network jitter drains the player node → choppy.
-  Don't `setPreferredSampleRate(16000)` — let the mixer resample; forcing the hardware rate
-  glitches.
+- **Crisp voice — TX side (`AudioEngineIO`)**: (1) the capture `AVAudioConverter` input block
+  must feed the source buffer once then return `.noDataNow` — returning the same buffer on
+  every re-request double-consumes samples and garbles audio; (2) emit fixed 320-sample
+  (640-byte) frames via a TX accumulator. Don't `setPreferredSampleRate(16000)` — let the
+  mixer resample; forcing the hardware rate glitches.
+
+- **Crisp voice — RX side (`VoiceJitterBuffer` in Core)**: ordering/dedup/loss-conceal is
+  pure logic in `RogerThatCore.VoiceJitterBuffer` (unit-tested), NOT in `AudioEngineIO`.
+  `AppState.handleVoicePacket` parses `[sessionID][seq]` (big-endian) — these were previously
+  decoded and thrown away — and feeds the buffer; it returns `.play`/`.conceal` in order.
+  `AudioEngineIO.playEncoded` then schedules immediately (the cushion is the buffer's prime
+  depth), and `playConcealment` bridges a lost frame with a last-frame fade (Opus PLC later).
+  A new `sessionID` (per talk burst) auto-resets; also `reset()` on talkEnd / leave.
+
+- **Half-duplex lockout**: PTT is half-duplex, so block local TX while a peer holds the floor.
+  `AppState.canStartTalking` is false during `.talkingRemote`; `TalkButton` dims + disables and
+  all three start paths (hold, toggle, `TogglePTTIntent`) guard on it. Without this, two
+  simultaneous talkers garble each other (no AEC in `.default` mode).
+
+- **Audio engine must survive interruptions**: a phone call, Siri, route change, or media
+  reset stops `AVAudioEngine` and it never restarts on its own — voice silently dies until
+  rejoin. `AudioEngineIO` observes `interruptionNotification` (.ended), `.AVAudioEngineConfigurationChange`,
+  and `mediaServicesWereResetNotification`, and calls `restartEngine()`. `startSession` swallows
+  start failures (mic not yet granted / session busy) and relies on these + the next frame to retry.
 
 - **PTT sound cues + text haptic**: `SoundEffects.shared` (in `Audio/Feedback.swift`,
   `@MainActor`) plays `start_talk`/`end_talk` from `PushToTalkController.start/stopTalking`
