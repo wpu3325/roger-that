@@ -22,6 +22,8 @@ final class AppState: ObservableObject {
     private var bleLink: BLEMeshLink?
     private var voiceLink: MultipeerVoiceLink?
     private var audioEngine: AudioEngineIO?
+    /// Opens sealed voice frames arriving over the Multipeer link (channel-key AEAD).
+    private var voiceCrypto: ChannelCrypto?
 
     /// Member IDs we've already announced as "joined" (cumulative for the session, so
     /// flaky BLE drop/return doesn't spam the chat with repeated join notices).
@@ -94,9 +96,14 @@ final class AppState: ObservableObject {
             onPeerEvent: { _, _ in }
         )
 
+        let crypto = ChannelCrypto(key: channel.key)
+        self.voiceCrypto = crypto
+
         let engine = AudioEngineIO()
         let ptt = PushToTalkController(
             localID: localID,
+            channelIDHash: channel.channelIDHash,
+            crypto: crypto,
             voiceLink: voice,
             audioEngine: engine
         )
@@ -166,6 +173,7 @@ final class AppState: ObservableObject {
         voiceLink?.stop()
         audioEngine?.stopSession()
         audioEngine = nil
+        voiceCrypto = nil
         voiceJitter.reset()
         voiceWatchdog?.cancel()
         voiceWatchdog = nil
@@ -197,14 +205,16 @@ final class AppState: ObservableObject {
     /// reflect remote talk state in the floor banner.
     private func handleVoicePacket(_ data: Data) {
         guard let packet = try? PacketCodec.decode(data) else { return }
+        // Drop cross-channel voice/talk: even if a stray Multipeer session forms across
+        // channels, packets stamped with another channel's hash are ignored here.
+        guard packet.channelIDHash == channel?.channelIDHash else { return }
+
         switch packet.type {
         case .voiceFrame:
-            // body = [sessionID u32 BE][seq u32 BE][encoded frame]
-            let body = Data(packet.body)
-            guard body.count >= 8 else { return }
-            let sessionID = Self.bigEndianUInt32(body[0..<4])
-            let seq = Self.bigEndianUInt32(body[4..<8])
-            let payload = Data(body[8...])
+            // Body is sealed with the channel key; open returns [sessionID][seq][frame] or
+            // nil (wrong channel / tampered), in which case we just drop the frame.
+            guard let crypto = voiceCrypto,
+                  let (sessionID, seq, payload) = VoiceBody.open(packet.body, crypto: crypto) else { return }
             // Run through the jitter buffer: it returns frames in order, plus concealment
             // for any it judges lost, so playback stays crisp under reordering/loss.
             for output in voiceJitter.enqueue(VoiceFrame(sessionID: sessionID, seq: seq, payload: payload)) {
@@ -222,11 +232,6 @@ final class AppState: ObservableObject {
         default:
             break
         }
-    }
-
-    /// Read a big-endian UInt32 from a 4-byte slice (slice indices may not start at 0).
-    private static func bigEndianUInt32(_ bytes: Data) -> UInt32 {
-        bytes.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
     }
 
     /// Show the remote-talking banner and (re)arm a watchdog. The banner is driven by

@@ -91,11 +91,11 @@ Generated with XcodeGen. Builds in Xcode (human must verify — no `xcodebuild` 
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| Voice unconfirmed on hardware | High | RX pipeline + MC single-session are correct by design but unrun on this host. Two-phone test needed; if one-directional, suspect Local Network permission. |
-| Multipeer service not channel-scoped | Medium | `serviceType` is shared across all channels; voice packets use `channelIDHash: 0`. Different channels could connect for voice. Not yet isolated. |
+| Voice unconfirmed on hardware | High | RX pipeline (now jitter-buffered + concealed) is correct by design but unrun on this host. Two-phone test needed; if one-directional, suspect Local Network permission. |
+| Multipeer service not channel-scoped | Resolved | Now isolated three ways: `discoveryInfo["ch"]` discovery filter + invitation-context check, `channelIDHash` packet filter, and per-frame `VoiceBody` AEAD. (`serviceType` stays shared, but channels can no longer connect or decode across each other.) |
 | Background BLE longevity | High | iOS suspends background BLE centrals; sustained mesh across suspensions unproven. |
 | PTT offline wake | High | No APNs path offline — app must be foregrounded to receive TALK_START. |
-| PCM bandwidth | Medium | 640 bytes/20ms frame; Opus (TODO) would cut ~20x. Voice viable only over Multipeer. |
+| PCM bandwidth | Medium | 640 bytes/20ms frame; Opus (TODO, pipeline now PLC-ready) would cut ~10x. Voice viable only over Multipeer. |
 
 ---
 

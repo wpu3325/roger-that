@@ -45,7 +45,13 @@ final class MultipeerVoiceLink: NSObject, Link, @unchecked Sendable {
         session.delegate = self
         self.session = session
 
-        let advertiser = MCNearbyServiceAdvertiser(peer: localPeer, discoveryInfo: nil, serviceType: serviceType)
+        // The serviceType is shared across all channels (its 15-char limit can't hold a
+        // hash), so we scope discovery by advertising the channel hash and only connecting
+        // peers that match. This keeps two channels in the same room from sharing a voice
+        // session. Defence-in-depth: voice frames are also channel-stamped + encrypted.
+        let advertiser = MCNearbyServiceAdvertiser(peer: localPeer,
+                                                   discoveryInfo: ["ch": channelToken],
+                                                   serviceType: serviceType)
         let browser = MCNearbyServiceBrowser(peer: localPeer, serviceType: serviceType)
         advertiser.delegate = self
         browser.delegate = self
@@ -79,8 +85,12 @@ final class MultipeerVoiceLink: NSObject, Link, @unchecked Sendable {
     private var onReceive: PacketReceiver?
     private var onPeerEvent: PeerEventHandler?
 
+    /// Channel hash as a string, used as the discovery token + invitation context.
+    private let channelToken: String
+
     init(channelIDHash: UInt32, localID: UInt32) {
         self.channelIDHash = channelIDHash
+        self.channelToken = String(channelIDHash)
         // MCPeerID displayName must be unique per device so handles don't collide and
         // the invitation tiebreak is deterministic. The user-facing name comes from the
         // BLE presence roster, not from here.
@@ -97,7 +107,13 @@ final class MultipeerVoiceLink: NSObject, Link, @unchecked Sendable {
 
 extension MultipeerVoiceLink: MCNearbyServiceAdvertiserDelegate {
     func advertiser(_ a: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peer: MCPeerID,
-                    withContext: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
+                    withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
+        // Accept only invitations carrying our channel token (the inviter stamps it as
+        // context). Rejects cross-channel or malformed invites.
+        guard let context, String(data: context, encoding: .utf8) == channelToken else {
+            invitationHandler(false, nil)
+            return
+        }
         invitationHandler(true, session)
     }
 }
@@ -108,10 +124,14 @@ extension MultipeerVoiceLink: MCNearbyServiceBrowserDelegate {
     func browser(_ b: MCNearbyServiceBrowser, foundPeer peer: MCPeerID,
                  withDiscoveryInfo info: [String: String]?) {
         guard let session else { return }
+        // Only connect peers advertising our channel — different channels share the
+        // serviceType but not the token.
+        guard info?["ch"] == channelToken else { return }
         // Tiebreak: only the peer with the larger token invites, so we don't both
         // invite each other and create competing sessions that never stabilize.
         if localPeer.displayName > peer.displayName {
-            b.invitePeer(peer, to: session, withContext: nil, timeout: 15)
+            b.invitePeer(peer, to: session,
+                         withContext: Data(channelToken.utf8), timeout: 15)
         }
     }
 

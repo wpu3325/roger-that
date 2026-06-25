@@ -46,10 +46,10 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 
 ## Testing
 
-52 unit tests across 5 suites — all in `Tests/RogerThatCoreTests/`:
+58 unit tests across 6 suites — all in `Tests/RogerThatCoreTests/`:
 
 ```bash
-swift test               # run all 52 tests
+swift test               # run all 58 tests
 swift test --filter PacketCodec   # run one suite
 ```
 
@@ -143,8 +143,20 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   advertise/browse and run the engine, or no Multipeer connection forms and nothing plays.
   PTT only installs the mic tap (TX); it must NOT start/stop the voice link.
 
-- **Voice frame body layout**: `[sessionID u32 BE][seq u32 BE][encoded frame]`. VOICE/TALK
-  packets use `channelIDHash: 0` and bypass the flood router (they go direct over Multipeer).
+- **Voice frame body layout**: the inner body is `[sessionID u32 BE][seq u32 BE][encoded
+  frame]`, but it's **sealed** — `RogerThatCore.VoiceBody.seal`/`open` ChaChaPoly-encrypts it
+  with the channel key (the Multipeer path bypasses FloodRouter's crypto, so it does its own).
+  VOICE_FRAME carries `flags: .bodyEncrypted`. VOICE/TALK packets carry the **real
+  `channelIDHash`** (not `0` anymore — that was the cross-channel bleed) and `AppState`
+  drops any whose hash ≠ the active channel. They still bypass the flood router (direct over
+  Multipeer).
+
+- **Multipeer is channel-scoped via discoveryInfo**: `serviceType` is shared across all
+  channels (its 15-char limit can't hold a hash), so `MultipeerVoiceLink` advertises the
+  channel hash in `discoveryInfo["ch"]`, the browser only invites peers whose `ch` matches,
+  and the advertiser only accepts invitations whose **context** is the channel token. Three
+  layers keep channels apart for voice: this discovery filter, the `channelIDHash` packet
+  filter, and per-frame `VoiceBody` encryption (a stray cross-channel frame is undecryptable).
 
 - **Multipeer voice topology**: use ONE shared `MCSession` for the channel + an invitation
   tiebreak (only the peer with the larger `MCPeerID.displayName` invites). A new MCSession per

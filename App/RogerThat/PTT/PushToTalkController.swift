@@ -49,8 +49,11 @@ final class PushToTalkController: NSObject {
 
     // MARK: - Init
 
-    init(localID: UInt32, voiceLink: MultipeerVoiceLink, audioEngine: AudioEngineIO) {
+    init(localID: UInt32, channelIDHash: UInt32, crypto: ChannelCrypto,
+         voiceLink: MultipeerVoiceLink, audioEngine: AudioEngineIO) {
         self.localID = localID
+        self.channelIDHash = channelIDHash
+        self.crypto = crypto
         self.voiceLink = voiceLink
         self.audioEngine = audioEngine
         super.init()
@@ -60,6 +63,11 @@ final class PushToTalkController: NSObject {
     // MARK: - Private
 
     private let localID: UInt32
+    /// Real channel hash stamped on every voice/talk packet so peers can drop cross-channel
+    /// traffic (was `0` before — the bleed that let two channels hear each other).
+    private let channelIDHash: UInt32
+    /// Seals voice frames with the channel key (the Multipeer path skips FloodRouter's crypto).
+    private let crypto: ChannelCrypto
     private let voiceLink: MultipeerVoiceLink
     private let audioEngine: AudioEngineIO
     private var isTalking = false
@@ -71,7 +79,7 @@ final class PushToTalkController: NSObject {
         voiceSeq = 0
         var idBytes = talkSessionID.bigEndian
         let body = Data(bytes: &idBytes, count: 4)
-        let pkt = Packet(type: .talkStart, channelIDHash: 0,
+        let pkt = Packet(type: .talkStart, channelIDHash: channelIDHash,
                          senderID: localID, messageID: UInt64.random(in: .min ... .max), body: body)
         if let data = try? PacketCodec.encode(pkt) { voiceLink.broadcast(data) }
     }
@@ -79,19 +87,18 @@ final class PushToTalkController: NSObject {
     private func sendTalkEnd() {
         var idBytes = talkSessionID.bigEndian
         let body = Data(bytes: &idBytes, count: 4)
-        let pkt = Packet(type: .talkEnd, channelIDHash: 0,
+        let pkt = Packet(type: .talkEnd, channelIDHash: channelIDHash,
                          senderID: localID, messageID: UInt64.random(in: .min ... .max), body: body)
         if let data = try? PacketCodec.encode(pkt) { voiceLink.broadcast(data) }
     }
 
     private func sendVoiceFrame(_ frame: Data) {
-        var sessionIDBytes = talkSessionID.bigEndian
-        var seqBytes = voiceSeq.bigEndian
+        let seq = voiceSeq
         voiceSeq += 1
-        var body = Data(bytes: &sessionIDBytes, count: 4)
-        body.append(Data(bytes: &seqBytes, count: 4))
-        body.append(frame)
-        let pkt = Packet(type: .voiceFrame, channelIDHash: 0,
+        // Seal [sessionID][seq][frame] with the channel key so only members can play it.
+        guard let body = try? VoiceBody.seal(sessionID: talkSessionID, seq: seq,
+                                             frame: frame, crypto: crypto) else { return }
+        let pkt = Packet(type: .voiceFrame, flags: .bodyEncrypted, channelIDHash: channelIDHash,
                          senderID: localID, messageID: UInt64.random(in: .min ... .max), body: body)
         if let data = try? PacketCodec.encode(pkt) { voiceLink.broadcast(data) }
     }
