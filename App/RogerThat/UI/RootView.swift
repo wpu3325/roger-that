@@ -7,10 +7,12 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if appState.session == nil {
-                CreateOrJoinView()
+            if appState.activeChannelID != nil {
+                ChannelView()                       // a channel is open
+            } else if appState.joinedChannels.isEmpty {
+                CreateOrJoinView()                  // first run — no channels yet
             } else {
-                ChannelView()
+                ChannelListView()                   // pick a channel or add one
             }
         }
         .preferredColorScheme(.dark)

@@ -3,10 +3,18 @@ import SwiftUI
 import RogerThatCore
 
 /// Observable state for the entire app. Lives on the main actor.
+///
+/// Multi-channel model: you can be a member of several channels at once. One shared BLE
+/// transport (via `LinkHub`) feeds one `SessionManager` per joined channel, so background
+/// channels keep collecting text/presence (and unread counts) even while another is open.
+/// Exactly one channel is *active* at a time (you can only talk/look at one) — its voice
+/// link + audio engine are the only ones running, and its data is mirrored into the
+/// `channel`/`members`/`messages`/`floorState`/`voiceLevel` properties the in-channel UI
+/// already reads, so those views didn't need to change.
 @MainActor
 final class AppState: ObservableObject {
 
-    // MARK: - Published state
+    // MARK: - Active-channel mirror (read by the in-channel UI)
 
     @Published var session: SessionManager?
     @Published var channel: Channel?
@@ -16,30 +24,62 @@ final class AppState: ObservableObject {
     /// Normalized 0...1 audio level of whoever currently holds the floor (drives waveform).
     @Published var voiceLevel: Float = 0
 
-    // MARK: - Dependencies (set up on join)
+    // MARK: - Multi-channel state
+
+    /// Joined channels, in list order (drives the channel list).
+    @Published var joinedChannels: [ChannelMetadata] = []
+    /// The currently open channel, or nil when browsing the channel list.
+    @Published var activeChannelID: String?
+    /// Unread message counts for channels that aren't currently open.
+    @Published var unreadByChannel: [String: Int] = [:]
 
     private(set) var pttController: PushToTalkController?
-    private var bleLink: BLEMeshLink?
+
+    // Per-channel background state, keyed by channelID.
+    private var sessions: [String: SessionManager] = [:]
+    private var ports: [String: any Link] = [:]
+    private var channelsByID: [String: Channel] = [:]
+    private var messagesByChannel: [String: [ChatMessage]] = [:]
+    private var membersByChannel: [String: [Member]] = [:]
+    /// Per-channel member IDs already announced as "joined" (cumulative; avoids BLE-flap spam).
+    private var knownMembersByChannel: [String: Set<UInt32>] = [:]
+
+    // MARK: - Shared transport
+
+    /// One channel-agnostic BLE link shared by every channel; the hub fans it out per channel.
+    private let bleLink: BLEMeshLink
+    private let hub: LinkHub
+    private var transportStarted = false
+
+    // MARK: - Active-channel voice (only one runs at a time)
+
     private var voiceLink: MultipeerVoiceLink?
     private var audioEngine: AudioEngineIO?
     /// Opens sealed voice frames arriving over the Multipeer link (channel-key AEAD).
     private var voiceCrypto: ChannelCrypto?
-
-    /// Member IDs we've already announced as "joined" (cumulative for the session, so
-    /// flaky BLE drop/return doesn't spam the chat with repeated join notices).
-    private var knownMemberIDs: Set<UInt32> = []
-
+    /// Reorders incoming voice frames, drops dups, and flags losses for concealment.
+    private let voiceJitter = VoiceJitterBuffer()
     /// Clears the remote-talking banner if voice frames stop arriving.
     private var voiceWatchdog: Task<Void, Never>?
 
-    /// Reorders incoming voice frames, drops dups, and flags losses for concealment.
-    private let voiceJitter = VoiceJitterBuffer()
+    private let store = ChannelStore()
+    private var rosterTimer: DispatchSourceTimer?
 
     /// False while a peer holds the floor — PTT is half-duplex, so we block local TX to
     /// avoid two people transmitting over each other and garbling the audio.
     var canStartTalking: Bool {
         if case .talkingRemote = floorState { return false }
         return true
+    }
+
+    /// Metadata for the channel that's currently open.
+    var activeMetadata: ChannelMetadata? {
+        joinedChannels.first { $0.channelID == activeChannelID }
+    }
+
+    /// How many members a channel currently sees (for the channel list).
+    func memberCount(for channelID: String) -> Int {
+        membersByChannel[channelID]?.count ?? 0
     }
 
     /// This device's persistent random ID.
@@ -51,53 +91,144 @@ final class AppState: ObservableObject {
         return id
     }()
 
-    // MARK: - Channel lifecycle
-
-    init() {
-        PTTIntentBridge.shared.appState = self
+    /// Current call sign (shared across all channels).
+    private var displayName: String {
+        UserDefaults.standard.string(forKey: "rogerthat.callSign") ?? "Me"
     }
 
-    func join(channel: Channel, displayName: String) {
-        // Seed with self so we never post a "you joined" notice.
-        knownMemberIDs = [localID]
+    init() {
+        let ble = BLEMeshLink(channelIDHash: 0)
+        bleLink = ble
+        hub = LinkHub(base: ble)
+        PTTIntentBridge.shared.appState = self
+        loadPersistedChannels()
+    }
 
-        let ble = BLEMeshLink(channelIDHash: channel.channelIDHash)
-        let voice = MultipeerVoiceLink(channelIDHash: channel.channelIDHash, localID: localID)
-        let mgr = SessionManager(
-            channel: channel,
-            localID: localID,
-            displayName: displayName,
-            link: ble
+    // MARK: - Channel membership
+
+    /// Join (or create) a channel: persist it, start collecting in the background, and open it.
+    /// `name`/`kind` describe how it's shared; defaults suit a random-key QR/code channel.
+    func join(channel: Channel, displayName: String,
+              name: String? = nil, kind: ChannelMetadata.Kind = .random) {
+        let id = channel.channelID
+        let meta = ChannelMetadata(
+            channelID: id,
+            name: name ?? Self.defaultName(for: channel),
+            kind: kind,
+            joinedAt: Date()
         )
+        if sessions[id] == nil {
+            store.add(meta, channel: channel)
+            startSession(for: channel, meta: meta)
+        }
+        setActive(id)
+    }
+
+    /// Leave a channel entirely: stop its session, scrub it from storage, forget its history.
+    func leave(_ channelID: String) {
+        if activeChannelID == channelID { setActive(nil) }
+        sessions[channelID]?.stop()
+        if let port = ports[channelID] { hub.removePort(port) }
+        sessions[channelID] = nil
+        ports[channelID] = nil
+        channelsByID[channelID] = nil
+        messagesByChannel[channelID] = nil
+        membersByChannel[channelID] = nil
+        knownMembersByChannel[channelID] = nil
+        unreadByChannel[channelID] = nil
+        joinedChannels.removeAll { $0.channelID == channelID }
+        store.remove(channelID)
+        if sessions.isEmpty { stopTransport() }
+    }
+
+    /// Leave the channel that's currently open.
+    func leaveActiveChannel() {
+        if let id = activeChannelID { leave(id) }
+    }
+
+    /// Open a channel (mirror its state + bring up voice), or nil to return to the list.
+    func setActive(_ channelID: String?) {
+        stopActiveVoice()
+        voiceJitter.reset()
+        floorState = .idle
+        voiceLevel = 0
+
+        activeChannelID = channelID
+        guard let channelID, let channel = channelsByID[channelID] else {
+            session = nil
+            self.channel = nil
+            members = []
+            messages = []
+            return
+        }
+
+        self.channel = channel
+        session = sessions[channelID]
+        members = membersByChannel[channelID] ?? []
+        messages = messagesByChannel[channelID] ?? []
+        unreadByChannel[channelID] = 0
+        startActiveVoice(channel: channel)
+    }
+
+    // MARK: - Session setup (background, per channel)
+
+    private func startSession(for channel: Channel, meta: ChannelMetadata) {
+        let id = channel.channelID
+        channelsByID[id] = channel
+        messagesByChannel[id] = messagesByChannel[id] ?? []
+        membersByChannel[id] = membersByChannel[id] ?? []
+        knownMembersByChannel[id] = [localID]   // seed self so we never post "you joined"
+
+        let port = hub.makePort()
+        ports[id] = port
+        let mgr = SessionManager(channel: channel, localID: localID, displayName: displayName, link: port)
 
         mgr.setMessageHandler { [weak self] msg in
-            guard let self else { return }
+            guard msg.packet.type == .text,
+                  let text = String(data: msg.plaintext, encoding: .utf8) else { return }
+            Task { @MainActor in self?.handleIncomingText(text, senderID: msg.packet.senderID, channelID: id) }
+        }
+        mgr.setRosterChangedHandler { [weak self, weak mgr] in
             Task { @MainActor in
-                let name = self.members.first(where: { $0.id == msg.packet.senderID })?.displayName
-                    ?? "Peer"
-                if msg.packet.type == .text,
-                   let text = String(data: msg.plaintext, encoding: .utf8) {
-                    self.messages.append(ChatMessage(
-                        senderName: name,
-                        text: text,
-                        timestamp: Date(),
-                        isLocal: false
-                    ))
-                    Haptics.messageReceived()
-                }
+                guard let self, let mgr else { return }
+                self.syncRoster(mgr.activeMembers, channelID: id)
             }
         }
 
-        // Receive incoming voice/talk packets over the Multipeer voice link.
+        sessions[id] = mgr
+        if !joinedChannels.contains(where: { $0.channelID == id }) {
+            joinedChannels.append(meta)
+        }
+
+        ensureTransportStarted()
+        mgr.start()
+    }
+
+    private func ensureTransportStarted() {
+        guard !transportStarted else { return }
+        transportStarted = true
+        hub.start()
+        scheduleRosterRefresh()
+    }
+
+    private func stopTransport() {
+        rosterTimer?.cancel()
+        rosterTimer = nil
+        hub.stop()
+        transportStarted = false
+    }
+
+    // MARK: - Active-channel voice
+
+    private func startActiveVoice(channel: Channel) {
+        let crypto = ChannelCrypto(key: channel.key)
+        voiceCrypto = crypto
+
+        let voice = MultipeerVoiceLink(channelIDHash: channel.channelIDHash, localID: localID)
         voice.setHandlers(
-            onReceive: { [weak self] data, _ in
-                Task { @MainActor in self?.handleVoicePacket(data) }
-            },
+            onReceive: { [weak self] data, _ in Task { @MainActor in self?.handleVoicePacket(data) } },
             onPeerEvent: { _, _ in }
         )
-
-        let crypto = ChannelCrypto(key: channel.key)
-        self.voiceCrypto = crypto
 
         let engine = AudioEngineIO()
         let ptt = PushToTalkController(
@@ -108,7 +239,6 @@ final class AppState: ObservableObject {
             audioEngine: engine
         )
 
-        // Drive the waveform from real audio amplitude.
         engine.onInputLevel = { [weak self] level in
             Task { @MainActor in
                 guard let self, case .talkingLocal = self.floorState else { return }
@@ -121,7 +251,6 @@ final class AppState: ObservableObject {
                 self.voiceLevel = level
             }
         }
-
         ptt.onFloorStateChange = { [weak self] state in
             Task { @MainActor in
                 guard let self else { return }
@@ -130,79 +259,74 @@ final class AppState: ObservableObject {
             }
         }
 
-        // Roster updates immediately when a presence beacon arrives (not just on the 5s poll).
-        mgr.setRosterChangedHandler { [weak self, weak mgr] in
-            Task { @MainActor in
-                guard let self, let mgr else { return }
-                self.syncRoster(mgr.activeMembers)
-            }
-        }
+        voiceLink = voice
+        audioEngine = engine
+        pttController = ptt
 
-        // Remote floor state (TALK_START/END from peers) updates immediately.
-        mgr.setFloorStateHandler { [weak self] state in
-            Task { @MainActor in
-                guard let self else { return }
-                // Don't overwrite local talking state with remote idle.
-                if case .talkingLocal = self.floorState { return }
-                self.floorState = state
-            }
-        }
-
-        self.bleLink = ble
-        self.voiceLink = voice
-        self.audioEngine = engine
-        self.session = mgr
-        self.channel = channel
-        self.pttController = ptt
-
-        ble.start()
-        mgr.start()
-        // Keep the voice link + audio engine up for the whole session so we can hear
-        // peers the instant they talk (not only while we're transmitting).
+        // Keep the voice link + audio engine up the whole time the channel is open, so we
+        // hear peers the instant they talk (not only while we're transmitting).
         voice.start()
         engine.startSession()
-
-        // Poll presence/roster on a timer.
-        scheduleRosterRefresh(mgr: mgr)
     }
 
-    func leaveChannel() {
-        session?.stop()
-        bleLink?.stop()
+    private func stopActiveVoice() {
         pttController?.stopTalking()
         voiceLink?.stop()
         audioEngine?.stopSession()
-        audioEngine = nil
-        voiceCrypto = nil
-        voiceJitter.reset()
         voiceWatchdog?.cancel()
         voiceWatchdog = nil
-        voiceLevel = 0
-        session = nil
-        channel = nil
-        members = []
-        messages = []
-        knownMemberIDs = []
-        floorState = .idle
         pttController = nil
-        bleLink = nil
         voiceLink = nil
-        rosterTimer?.cancel()
-        rosterTimer = nil
+        audioEngine = nil
+        voiceCrypto = nil
     }
 
-    /// Pull-to-refresh: re-announce our presence, give peers a moment to reply,
-    /// then snapshot the latest roster.
+    // MARK: - Incoming text + roster (per channel)
+
+    private func handleIncomingText(_ text: String, senderID: UInt32, channelID: String) {
+        let name = membersByChannel[channelID]?.first { $0.id == senderID }?.displayName ?? "Peer"
+        appendMessage(ChatMessage(senderName: name, text: text, timestamp: Date(), isLocal: false),
+                      to: channelID)
+        if channelID == activeChannelID {
+            Haptics.messageReceived()
+        } else {
+            unreadByChannel[channelID, default: 0] += 1
+        }
+    }
+
+    /// Update a channel's roster and post a centered "X joined" notice for new members.
+    private func syncRoster(_ snapshot: [Member], channelID: String) {
+        var known = knownMembersByChannel[channelID] ?? [localID]
+        for member in snapshot where !known.contains(member.id) {
+            known.insert(member.id)
+            appendMessage(.system("\(member.displayName) joined"), to: channelID)
+        }
+        knownMembersByChannel[channelID] = known
+        membersByChannel[channelID] = snapshot
+        if channelID == activeChannelID { members = snapshot }
+    }
+
+    private func appendMessage(_ message: ChatMessage, to channelID: String) {
+        messagesByChannel[channelID, default: []].append(message)
+        if channelID == activeChannelID { messages = messagesByChannel[channelID] ?? [] }
+    }
+
+    func sendText(_ text: String) {
+        guard let id = activeChannelID, let session = sessions[id] else { return }
+        session.sendText(text)
+        appendMessage(ChatMessage(senderName: "You", text: text, timestamp: Date(), isLocal: true), to: id)
+    }
+
+    /// Pull-to-refresh: re-announce presence on the active channel, then snapshot its roster.
     func refreshRoster() async {
-        session?.announcePresence()
+        guard let id = activeChannelID else { return }
+        sessions[id]?.announcePresence()
         try? await Task.sleep(nanoseconds: 700_000_000)
-        members = session?.activeMembers ?? []
+        if let mgr = sessions[id] { syncRoster(mgr.activeMembers, channelID: id) }
     }
 
-    // MARK: - Voice receive
+    // MARK: - Voice receive (active channel)
 
-    /// Decode a packet arriving over the Multipeer voice link: play voice frames and
-    /// reflect remote talk state in the floor banner.
     private func handleVoicePacket(_ data: Data) {
         guard let packet = try? PacketCodec.decode(data) else { return }
         // Drop cross-channel voice/talk: even if a stray Multipeer session forms across
@@ -215,8 +339,6 @@ final class AppState: ObservableObject {
             // nil (wrong channel / tampered), in which case we just drop the frame.
             guard let crypto = voiceCrypto,
                   let (sessionID, seq, payload) = VoiceBody.open(packet.body, crypto: crypto) else { return }
-            // Run through the jitter buffer: it returns frames in order, plus concealment
-            // for any it judges lost, so playback stays crisp under reordering/loss.
             for output in voiceJitter.enqueue(VoiceFrame(sessionID: sessionID, seq: seq, payload: payload)) {
                 switch output {
                 case .play(let frame): audioEngine?.playEncoded(frame)
@@ -234,9 +356,8 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Show the remote-talking banner and (re)arm a watchdog. The banner is driven by
-    /// the actual voice-frame flow plus this watchdog, so a dropped TALK_START/END (both
-    /// sent unreliably) can't leave the indicator missing or stuck — it stays consistent.
+    /// Show the remote-talking banner and (re)arm a watchdog. Driven by voice-frame flow
+    /// plus this timeout, so a dropped (unreliable) TALK_START/END can't leave it stuck.
     private func showRemoteTalking(senderID: UInt32) {
         if case .talkingLocal = floorState { return }   // never override our own transmission
         let name = members.first { $0.id == senderID }?.displayName ?? "Someone"
@@ -261,43 +382,34 @@ final class AppState: ObservableObject {
         }
     }
 
-    func sendText(_ text: String) {
-        guard let session else { return }
-        session.sendText(text)
-        messages.append(ChatMessage(
-            senderName: "You",
-            text: text,
-            timestamp: Date(),
-            isLocal: true
-        ))
-    }
+    // MARK: - Startup / timers
 
-    // MARK: - Roster refresh
-
-    /// Update the published roster and post a centered "X joined" notice in chat for
-    /// any member we haven't seen before this session.
-    private func syncRoster(_ snapshot: [Member]) {
-        for member in snapshot where !knownMemberIDs.contains(member.id) {
-            knownMemberIDs.insert(member.id)
-            messages.append(.system("\(member.displayName) joined"))
+    private func loadPersistedChannels() {
+        for entry in store.load() {
+            startSession(for: entry.channel, meta: entry.meta)
         }
-        members = snapshot
+        // Start on the channel list (no channel auto-opened).
     }
 
-    private var rosterTimer: DispatchSourceTimer?
-
-    private func scheduleRosterRefresh(mgr: SessionManager) {
-        let t = DispatchSource.makeTimerSource(queue: .main)
-        t.schedule(deadline: .now(), repeating: 5)
-        t.setEventHandler { [weak self, weak mgr] in
-            guard let self, let mgr else { return }
+    /// Periodically re-snapshot every channel's roster (belt-and-braces over the
+    /// event-driven `setRosterChangedHandler`).
+    private func scheduleRosterRefresh() {
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 5, repeating: 5)
+        timer.setEventHandler { [weak self] in
             Task { @MainActor in
-                self.syncRoster(mgr.activeMembers)
-                // floorState is managed by ptt.onFloorStateChange and mgr.setFloorStateHandler;
-                // do NOT overwrite it here or local PTT state gets clobbered every 5 seconds.
+                guard let self else { return }
+                for (id, mgr) in self.sessions {
+                    self.syncRoster(mgr.activeMembers, channelID: id)
+                }
             }
         }
-        t.resume()
-        rosterTimer = t
+        timer.resume()
+        rosterTimer = timer
+    }
+
+    private static func defaultName(for channel: Channel) -> String {
+        let hex = String(format: "%08X", channel.channelIDHash)
+        return "Channel \(hex.prefix(4))·\(hex.suffix(4))"
     }
 }

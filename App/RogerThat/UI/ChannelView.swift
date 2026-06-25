@@ -37,11 +37,16 @@ struct ChannelView: View {
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
                 keyboardVisible = false
             }
-            .navigationTitle(appState.channel?.channelID.prefix(8).description ?? "Channel")
+            .navigationTitle(appState.activeMetadata?.name ?? "Channel")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Leave") { appState.leaveChannel() }
+                    // Back to the channel list; stays joined and keeps collecting in the background.
+                    Button {
+                        appState.setActive(nil)
+                    } label: {
+                        Label("Channels", systemImage: "chevron.left")
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -51,10 +56,19 @@ struct ChannelView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showActionButtonGuide = true
+                    Menu {
+                        Button {
+                            showActionButtonGuide = true
+                        } label: {
+                            Label("Action Button setup", systemImage: "button.angledtop.vertical.right")
+                        }
+                        Button(role: .destructive) {
+                            appState.leaveActiveChannel()
+                        } label: {
+                            Label("Leave channel", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
                     } label: {
-                        Image(systemName: "button.angledtop.vertical.right")
+                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }

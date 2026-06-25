@@ -12,6 +12,7 @@
 		1AB7E02F763AB70693091580 /* RosterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65CA9982E4E8745295013443 /* RosterView.swift */; };
 		25192E02113B8D1741AC7412 /* end_talk.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = EB81655C903DACB76EA12874 /* end_talk.mp3 */; };
 		308B1C51DBE7A09483BD7B11 /* VoiceWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9D94B4A617F0E67883293C /* VoiceWaveformView.swift */; };
+		33AF20D835A3DCC1876E7AAF /* ChannelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01B017F4DDDE91DA58A121CC /* ChannelStore.swift */; };
 		3CCE8D6E9CA194ADA74A9925 /* AudioEngineIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7A09074E577F46E08A583F /* AudioEngineIO.swift */; };
 		3F756327C3C0E64AB115C032 /* BLEMeshLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */; };
 		55E5ACB6D726E14B4AAA3819 /* RogerThatCore in Frameworks */ = {isa = PBXBuildFile; productRef = 24E981F9B34DD13828168FEA /* RogerThatCore */; };
@@ -26,6 +27,7 @@
 		8477CBABC288830740CB7B8B /* Feedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DADADF42F560D6EFED3906 /* Feedback.swift */; };
 		B81AFC933AD4A89170D776F9 /* TogglePTTIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF900A7AB4DEDD8C53B03CA /* TogglePTTIntent.swift */; };
 		B8821C62D4CEEA17AD641DFC /* TextChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */; };
+		BBACF0110583E60B0B6423CA /* ChannelListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676878381D54073576FE43D4 /* ChannelListView.swift */; };
 		C72E7B400497BCD335509353 /* ChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013AB27B3698C2DA444C657C /* ChannelView.swift */; };
 		D6B5427A8B500A61424C5339 /* PTTIntentBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF31972EA69CFDBC59620D2 /* PTTIntentBridge.swift */; };
 		D8A6CD9BCFCAB96AE903141F /* RogerThatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188F0612146276232F9210C5 /* RogerThatApp.swift */; };
@@ -36,6 +38,7 @@
 
 /* Begin PBXFileReference section */
 		013AB27B3698C2DA444C657C /* ChannelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelView.swift; sourceTree = "<group>"; };
+		01B017F4DDDE91DA58A121CC /* ChannelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelStore.swift; sourceTree = "<group>"; };
 		046363F438373C9613F20A35 /* roger-that-icon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = "roger-that-icon.icon"; sourceTree = "<group>"; };
 		0A9E5E87AF7A94BA261EA11A /* PushToTalkController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushToTalkController.swift; sourceTree = "<group>"; };
 		188F0612146276232F9210C5 /* RogerThatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RogerThatApp.swift; sourceTree = "<group>"; };
@@ -48,6 +51,7 @@
 		65CA9982E4E8745295013443 /* RosterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosterView.swift; sourceTree = "<group>"; };
 		667DA1335C389BF6A179759C /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		67623D54F7048D01A86C828B /* start_talk.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = start_talk.mp3; sourceTree = "<group>"; };
+		676878381D54073576FE43D4 /* ChannelListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelListView.swift; sourceTree = "<group>"; };
 		72B50E2A58CF744F53D18BED /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		7979E3CE2321FAD2FD59D756 /* roger-that */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "roger-that"; path = .; sourceTree = SOURCE_ROOT; };
 		7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMeshLink.swift; sourceTree = "<group>"; };
@@ -105,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				63986AD21802BA2B819B7789 /* ActionButtonGuideView.swift */,
+				676878381D54073576FE43D4 /* ChannelListView.swift */,
 				8C5B6703F23C2CF3107B420F /* ChannelQRView.swift */,
 				013AB27B3698C2DA444C657C /* ChannelView.swift */,
 				3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */,
@@ -133,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				3C1F67B6229378DB28C4CA62 /* Audio */,
+				ED6F9ABCE715D8681EA15646 /* Persistence */,
 				5FCB87E8672364925ABD8BDA /* PTT */,
 				16B8A8513C45930D5169B643 /* Resources */,
 				CE5F7BEEB894BC55225C2CA3 /* Transports */,
@@ -176,6 +182,14 @@
 				A4EC6C14CB05BD016348B660 /* Packages */,
 				D4C19FD6C0FF30516248D196 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		ED6F9ABCE715D8681EA15646 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				01B017F4DDDE91DA58A121CC /* ChannelStore.swift */,
+			);
+			path = Persistence;
 			sourceTree = "<group>";
 		};
 		FBAED7158B33DF7A8F0DFE2A /* Sounds */ = {
@@ -269,7 +283,9 @@
 				6D1734EEE265F0920D16A6D4 /* AppState.swift in Sources */,
 				3CCE8D6E9CA194ADA74A9925 /* AudioEngineIO.swift in Sources */,
 				3F756327C3C0E64AB115C032 /* BLEMeshLink.swift in Sources */,
+				BBACF0110583E60B0B6423CA /* ChannelListView.swift in Sources */,
 				829A60D8709826E9A2A3029B /* ChannelQRView.swift in Sources */,
+				33AF20D835A3DCC1876E7AAF /* ChannelStore.swift in Sources */,
 				C72E7B400497BCD335509353 /* ChannelView.swift in Sources */,
 				FCA74BF0EA9F1A945DC40816 /* CreateOrJoinView.swift in Sources */,
 				8477CBABC288830740CB7B8B /* Feedback.swift in Sources */,

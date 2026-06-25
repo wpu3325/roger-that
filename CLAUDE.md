@@ -34,7 +34,12 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 | `Sources/RogerThatCore/Crypto/ChannelCrypto.swift` | ChaChaPoly AEAD body encryption |
 | `Sources/RogerThatCore/Channel/JoinCode.swift` | URL-safe base64 channel join payload |
 | `Sources/RogerThatCore/Transport/InMemoryLink.swift` | In-process link used by all unit tests |
-| `App/RogerThat/AppState.swift` | @MainActor observable; wires session, BLE, voice, PTT |
+| `Sources/RogerThatCore/Transport/LinkHub.swift` | Fans one shared Link out to N per-channel ports (multi-channel) |
+| `Sources/RogerThatCore/Channel/ChannelMetadata.swift` | Codable persisted record of a joined channel |
+| `Sources/RogerThatCore/Protocol/VoiceBody.swift` | Seal/open voice frame bodies with the channel key |
+| `App/RogerThat/AppState.swift` | @MainActor; multi-channel sessions over a shared hub, active-channel mirror |
+| `App/RogerThat/Persistence/ChannelStore.swift` | Joined channels: metadata in UserDefaults, keys in Keychain |
+| `App/RogerThat/UI/ChannelListView.swift` | Channel-list home with unread badges + lock icons |
 | `App/RogerThat/Transports/BLEMeshLink.swift` | Dual peripheral+central CoreBluetooth |
 | `App/RogerThat/Transports/MultipeerVoiceLink.swift` | Single-MCSession voice link (tiebreak invites) |
 | `App/RogerThat/Audio/AudioEngineIO.swift` | Mic capture + AVAudioPlayerNode playback + RMS levels |
@@ -46,10 +51,10 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 
 ## Testing
 
-58 unit tests across 6 suites — all in `Tests/RogerThatCoreTests/`:
+67 unit tests across 8 suites — all in `Tests/RogerThatCoreTests/`:
 
 ```bash
-swift test               # run all 58 tests
+swift test               # run all 67 tests
 swift test --filter PacketCodec   # run one suite
 ```
 
@@ -215,6 +220,21 @@ requires the full Xcode.app; it's not available from CLT-only installs.
 
 - **PTT background wake**: PTChannelManager needs APNs. Fully offline = app must
   be in foreground to receive TALK_START.
+
+- **Multi-channel = one shared radio, N sessions, one active**: you can join several
+  channels. `AppState` runs ONE channel-agnostic `BLEMeshLink` through a `LinkHub`, which
+  vends a port per channel to its own `SessionManager` (each filters its `channelIDHash`).
+  Only ONE channel is *active* (open) at a time — its voice link + audio engine are the only
+  ones running, and its data is mirrored into `channel`/`members`/`messages`/`floorState`/
+  `voiceLevel` so the in-channel views didn't change. Background channels still collect text/
+  presence and bump `unreadByChannel`. `setActive(nil)` returns to the list (stays joined);
+  `setActive(id)` opens one (swaps the voice stack). Don't give each channel its own BLE
+  stack — `Link.setHandlers` has a single handler, which is exactly why `LinkHub` exists.
+
+- **Channel persistence**: `ChannelStore` saves metadata (`[ChannelMetadata]` JSON) in
+  UserDefaults and the 32-byte key in the Keychain under `channelID`. On launch `AppState`
+  reloads them and starts all sessions (background collection begins immediately); the app
+  opens on the channel list, not in a channel.
 
 ## Device install (current state)
 

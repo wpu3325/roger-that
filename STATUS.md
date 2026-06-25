@@ -92,6 +92,7 @@ Generated with XcodeGen. Builds in Xcode (human must verify — no `xcodebuild` 
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Voice unconfirmed on hardware | High | RX pipeline (now jitter-buffered + concealed) is correct by design but unrun on this host. Two-phone test needed; if one-directional, suspect Local Network permission. |
+| Multi-channel App refactor unbuilt | High | `AppState` multi-session rewrite + `ChannelStore`/Keychain + `ChannelListView` are device-only and have NOT been compiled (CLT host has no Xcode). Core foundations (`LinkHub`, `ChannelMetadata`) ARE verified by harness. Needs an Xcode build pass before relying on it. |
 | Multipeer service not channel-scoped | Resolved | Now isolated three ways: `discoveryInfo["ch"]` discovery filter + invitation-context check, `channelIDHash` packet filter, and per-frame `VoiceBody` AEAD. (`serviceType` stays shared, but channels can no longer connect or decode across each other.) |
 | Background BLE longevity | High | iOS suspends background BLE centrals; sustained mesh across suspensions unproven. |
 | PTT offline wake | High | No APNs path offline — app must be foregrounded to receive TALK_START. |

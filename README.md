@@ -13,7 +13,7 @@ RogerThat/
   Package.swift              Swift Package (RogerThatCore library + unit tests)
   project.yml                XcodeGen spec for the iOS app target
   Sources/RogerThatCore/     Platform-agnostic core: protocol, routing, crypto, audio codec
-  Tests/RogerThatCoreTests/  Unit tests (58 tests, import Testing)
+  Tests/RogerThatCoreTests/  Unit tests (67 tests, import Testing)
   App/RogerThat/             iOS app: BLE, Multipeer, AVAudioEngine, SwiftUI UI
 ```
 
@@ -25,7 +25,7 @@ RogerThat/
 
 ```sh
 swift build              # Core compiles clean on a CLT-only host
-swift test               # 58 tests — run from Xcode (⌘U); see caveat below
+swift test               # 67 tests — run from Xcode (⌘U); see caveat below
 ```
 
 The suite uses Swift's built-in `import Testing`. On a CLT-only host the `swift test`
