@@ -37,7 +37,7 @@ final class AppState: ObservableObject {
 
     // Per-channel background state, keyed by channelID.
     private var sessions: [String: SessionManager] = [:]
-    private var ports: [String: any Link] = [:]
+    private var ports: [String: any RogerThatCore.Link] = [:]
     private var channelsByID: [String: Channel] = [:]
     private var messagesByChannel: [String: [ChatMessage]] = [:]
     private var membersByChannel: [String: [Member]] = [:]
