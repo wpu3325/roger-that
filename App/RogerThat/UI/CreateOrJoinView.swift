@@ -8,6 +8,7 @@ struct CreateOrJoinView: View {
     @State private var callSignDraft = ""
     @State private var isEditingCallSign = false
     @State private var showJoinSheet = false
+    @State private var showPasswordSheet = false
     @State private var errorMessage: String?
     @State private var createdChannel: Channel?
     @State private var createdCode: String?
@@ -45,12 +46,17 @@ struct CreateOrJoinView: View {
                 Divider()
 
                 joinButton
+
+                passwordButton
             }
             .padding()
             .navigationTitle("")
             .navigationBarHidden(true)
             .sheet(isPresented: $showJoinSheet) {
                 JoinSheet(displayName: displayName)
+            }
+            .sheet(isPresented: $showPasswordSheet) {
+                PasswordChannelSheet(displayName: displayName)
             }
             .sheet(isPresented: $showHelp) {
                 HelpView()
@@ -186,6 +192,23 @@ struct CreateOrJoinView: View {
         .padding(.horizontal)
     }
 
+    private var passwordButton: some View {
+        Button {
+            commitCallSign()
+            guard !displayName.trimmingCharacters(in: .whitespaces).isEmpty else {
+                errorMessage = "Enter your call sign first."
+                return
+            }
+            showPasswordSheet = true
+        } label: {
+            Label("Channel with Password", systemImage: "lock.fill")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .padding(.horizontal)
+    }
+
     // MARK: - Helpers
 
     /// 8-char hex tag from the channel hash, e.g. "A3F7·B248".
@@ -282,5 +305,80 @@ private struct JoinSheet: View {
         } catch {
             errorMessage = "Invalid code. Try again."
         }
+    }
+}
+
+// MARK: - PasswordChannelSheet
+
+/// Create *or* join a password channel — they're the same operation: derive the key from
+/// the name + password and enter. The first person in "creates" it; everyone after "joins".
+private struct PasswordChannelSheet: View {
+    let displayName: String
+    @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) var dismiss
+    @State private var name = ""
+    @State private var password = ""
+    /// Computed on demand (PBKDF2 is deliberately slow — never per keystroke).
+    @State private var verificationCode: String?
+
+    private var canEnter: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Channel name", text: $name)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .onChange(of: name) { _, _ in verificationCode = nil }
+                    SecureField("Password", text: $password)
+                        .onChange(of: password) { _, _ in verificationCode = nil }
+                } footer: {
+                    Text("Anyone who enters the same name and password joins the same channel — no QR needed. Share them however you like.")
+                }
+
+                Section {
+                    Button("Show verification code") {
+                        guard canEnter else { return }
+                        let channel = PasswordKey.channel(name: name.trimmingCharacters(in: .whitespaces),
+                                                          password: password)
+                        verificationCode = PasswordKey.fingerprint(of: channel.key)
+                    }
+                    .disabled(!canEnter)
+
+                    if let code = verificationCode {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(code)
+                                .font(.system(.title3, design: .monospaced).bold())
+                                .tracking(3)
+                            Text("Everyone who typed the same password sees this code. Compare it to be sure you're in the same channel.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section {
+                    Button("Enter Channel") { enter() }
+                        .disabled(!canEnter)
+                }
+            }
+            .navigationTitle("Password Channel")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func enter() {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, !password.isEmpty else { return }
+        let channel = PasswordKey.channel(name: trimmed, password: password)
+        appState.join(channel: channel, displayName: displayName, name: trimmed, kind: .password)
+        dismiss()
     }
 }

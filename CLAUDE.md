@@ -37,6 +37,7 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 | `Sources/RogerThatCore/Transport/LinkHub.swift` | Fans one shared Link out to N per-channel ports (multi-channel) |
 | `Sources/RogerThatCore/Channel/ChannelMetadata.swift` | Codable persisted record of a joined channel |
 | `Sources/RogerThatCore/Protocol/VoiceBody.swift` | Seal/open voice frame bodies with the channel key |
+| `Sources/RogerThatCore/Crypto/PasswordKey.swift` | PBKDF2 channel key from name+password; verification fingerprint |
 | `App/RogerThat/AppState.swift` | @MainActor; multi-channel sessions over a shared hub, active-channel mirror |
 | `App/RogerThat/Persistence/ChannelStore.swift` | Joined channels: metadata in UserDefaults, keys in Keychain |
 | `App/RogerThat/UI/ChannelListView.swift` | Channel-list home with unread badges + lock icons |
@@ -51,10 +52,10 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 
 ## Testing
 
-67 unit tests across 8 suites — all in `Tests/RogerThatCoreTests/`:
+73 unit tests across 9 suites — all in `Tests/RogerThatCoreTests/`:
 
 ```bash
-swift test               # run all 67 tests
+swift test               # run all 73 tests
 swift test --filter PacketCodec   # run one suite
 ```
 
@@ -235,6 +236,15 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   UserDefaults and the 32-byte key in the Keychain under `channelID`. On launch `AppState`
   reloads them and starts all sessions (background collection begins immediately); the app
   opens on the channel list, not in a channel.
+
+- **Password channels = derive, don't share**: `PasswordKey.channel(name:password:)` derives
+  the key via PBKDF2-HMAC-SHA256 (100k iters, salt = name) and the channelID from that key —
+  so creating and joining are the SAME operation (enter name+password → derive → join), and
+  different passwords don't even share a `channelIDHash`. `kind: .password` (lock icon in the
+  list). PBKDF2 is deliberately slow — derive on a tap or on enter, NEVER per keystroke.
+  `PasswordKey.fingerprint(of:)` is a short non-secret code (HKDF) both sides compare to
+  confirm they typed the same password. PBKDF2 is hand-rolled on CryptoKit HMAC (single
+  block, dkLen == 32) to keep Core platform-agnostic; verified against the RFC test vectors.
 
 ## Device install (current state)
 
