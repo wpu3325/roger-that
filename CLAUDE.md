@@ -122,9 +122,11 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   keystroke (and can collapse edit UI mid-type). Type into a local `@State` draft, commit on
   submit. See the call-sign field in `CreateOrJoinView`.
 
-- **`CODE_SIGN_STYLE: Manual` + empty `DEVELOPMENT_TEAM`**: the generated project
-  requires a human to set Team + Bundle ID in Xcode before building on device.
-  Marked with `# HUMAN:` comments in `project.yml`.
+- **Signing is fully configured in `project.yml`**: `CODE_SIGN_STYLE: Automatic`,
+  `DEVELOPMENT_TEAM: TPYY95V67H`, `PRODUCT_BUNDLE_IDENTIFIER: com.wilsonpu.rogerthat`.
+  Building under a different Apple ID means changing Team + Bundle ID in both Xcode and
+  `project.yml` (see `RUN_ON_DEVICE.md` Step 2a). Free Personal Team certs expire after
+  7 days — reconnect the phone and `⌘R` to re-sign.
 
 - **TTL semantics**: TTL=8 means 8 relay-hops, so the message reaches the node
   at distance **9** from the originator (not 8). Node at distance 9 receives but

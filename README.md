@@ -13,21 +13,25 @@ RogerThat/
   Package.swift              Swift Package (RogerThatCore library + unit tests)
   project.yml                XcodeGen spec for the iOS app target
   Sources/RogerThatCore/     Platform-agnostic core: protocol, routing, crypto, audio codec
-  Tests/RogerThatCoreTests/  Unit tests (44 tests, all green with swift test)
+  Tests/RogerThatCoreTests/  Unit tests (44 tests, import Testing)
   App/RogerThat/             iOS app: BLE, Multipeer, AVAudioEngine, SwiftUI UI
 ```
 
 **RogerThatCore** — zero platform imports. Builds and tests with `swift test` on any macOS/Linux CI box.
 
-**RogerThat** (iOS app) — depends on RogerThatCore. Contains all device-only APIs: CoreBluetooth, MultipeerConnectivity, AVFoundation, PushToTalk, SwiftUI.
+**RogerThat** (iOS app, iOS 17+) — depends on RogerThatCore. Contains all device-only APIs: CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 
-## Build the core (CI / no Xcode required)
+## Build the core (no Xcode required)
 
 ```sh
-swift test
+swift build              # Core compiles clean on a CLT-only host
+swift test               # 44 tests — run from Xcode (⌘U); see caveat below
 ```
 
-All 44 unit tests should be green.
+The suite uses Swift's built-in `import Testing`. On a CLT-only host the `swift test`
+runner currently fails with `no such module 'Testing'` (Swift 6.3.2) — verify Core with
+`swift build` from the CLI and run the actual tests from Xcode. **Do not switch to
+`import XCTest`** — that requires the full Xcode.app, which CI/CLT hosts don't have.
 
 ## Build the app (Xcode 15+ required)
 

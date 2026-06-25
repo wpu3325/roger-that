@@ -178,11 +178,13 @@ Design rule: nothing high-power runs unless the user is actively talking.
 
 ## 10. Tech stack
 
-- **Language / OS:** Swift, iOS 16+ (required for the PushToTalk framework).
+- **Language / OS:** Swift, iOS 17+.
 - **Live voice transport:** Multipeer Connectivity.
 - **Mesh transport:** Core Bluetooth (peripheral + central roles).
-- **Audio:** AVAudioEngine; libopus via a Swift Package wrapper.
-- **PTT UX:** PushToTalk framework (`PTChannelManager`) — requires the Push to Talk entitlement.
+- **Audio:** AVAudioEngine; `RawPCMCodec` today, libopus (Swift Package wrapper) a TODO.
+- **PTT UX:** in-app Talk button + Action Button (AppIntent). > The PushToTalk framework
+  (`PTChannelManager`) was the original plan but its entitlement needs a paid Apple
+  Developer account; dropped for the free-tier prototype. See `RUN_ON_DEVICE.md`.
 - **Crypto:** CryptoKit (AEAD + key handling).
 - **Backend:** none.
 
