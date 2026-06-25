@@ -157,8 +157,26 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   drive the "X is talking" state from voice-frame flow + a ~1.2s timeout (`AppState.showRemoteTalking`)
   so a dropped control packet can't leave it missing or stuck.
 
-- **Force loudspeaker for voice**: `.voiceChat` mode routes to the earpiece; call
-  `overrideOutputAudioPort(.speaker)` after `setActive(true)`.
+- **Loudspeaker, not earpiece**: `.voiceChat` mode forces the quiet earpiece AND pumps
+  the signal (AGC/AEC), which sounds choppy. PTT is half-duplex (never capture+play at
+  once), so `AudioEngineIO` uses `.playAndRecord` + mode `.default` + `.defaultToSpeaker`,
+  then `overrideOutputAudioPort(.speaker)`. A `routeChangeNotification` observer re-asserts
+  the speaker ONLY when stuck on `.builtInReceiver` (so it won't steal headphones/Bluetooth).
+
+- **Crisp voice = two fixes in `AudioEngineIO`**: (1) the capture `AVAudioConverter` input
+  block must feed the source buffer once then return `.noDataNow` — returning the same buffer
+  on every re-request double-consumes samples and garbles audio; (2) emit fixed 320-sample
+  (640-byte) frames via a TX accumulator, and on RX prime a ~60ms jitter buffer (re-primed
+  after a >0.4s gap) before scheduling, or network jitter drains the player node → choppy.
+  Don't `setPreferredSampleRate(16000)` — let the mixer resample; forcing the hardware rate
+  glitches.
+
+- **PTT sound cues + text haptic**: `SoundEffects.shared` (in `Audio/Feedback.swift`,
+  `@MainActor`) plays `start_talk`/`end_talk` from `PushToTalkController.start/stopTalking`
+  via `MainActor.assumeIsolated` (both PTT entry points are already on main). Incoming text
+  fires `Haptics.messageReceived()` from `AppState`'s message handler. The cue files live in
+  `App/RogerThat/Resources/Sounds/` (xcodegen bundles `.mp3` as resources at the bundle root)
+  and are AAC-in-QuickTime despite the `.mp3` extension — `AVAudioPlayer` decodes by content.
 
 - **Chat UI (iMessage-style)**: `ChatMessage.kind` is `.message` or `.system`; post
   `.system("X joined")` from `AppState.syncRoster` (tracked via `knownMemberIDs`, cumulative

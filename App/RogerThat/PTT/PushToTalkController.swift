@@ -22,6 +22,10 @@ final class PushToTalkController: NSObject {
         isTalking = true
         onFloorStateChange?(.talkingLocal)
 
+        // Entry points (the on-screen button gesture and the Action Button intent) both
+        // run on the main actor, so cueing here is safe.
+        MainActor.assumeIsolated { SoundEffects.shared.playStartTalk() }
+
         sendTalkStart()
         try? audioEngine.startCapture()
 
@@ -34,6 +38,8 @@ final class PushToTalkController: NSObject {
         guard isTalking else { return }
         isTalking = false
         onFloorStateChange?(.idle)
+
+        MainActor.assumeIsolated { SoundEffects.shared.playEndTalk() }
 
         audioEngine.stopCapture()
         sendTalkEnd()

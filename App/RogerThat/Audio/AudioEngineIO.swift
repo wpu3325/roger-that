@@ -1,9 +1,11 @@
 import Foundation
+import QuartzCore
 @preconcurrency import AVFoundation
 import RogerThatCore
 
-/// 20 ms at 16 kHz mono = 320 samples.
+/// 20 ms at 16 kHz mono = 320 samples = 640 bytes.
 private let frameSamples = 320
+private let frameBytes = frameSamples * MemoryLayout<Int16>.size
 private let sampleRate: Double = 16_000
 
 /// Manages AVAudioEngine for PTT capture and playback.
@@ -34,7 +36,24 @@ final class AudioEngineIO {
     var onOutputLevel: ((Float) -> Void)?
 
     private var captureConverter: AVAudioConverter?
+    /// Leftover converted PCM that didn't fill a whole 20 ms frame; prepended next callback
+    /// so every emitted frame is exactly `frameBytes` (consistent frames = crisp playback).
+    private var txAccumulator = Data()
     private var sessionActive = false
+
+    // MARK: - Playback jitter buffer
+
+    /// Frames are scheduled the instant they arrive only once a small lead is built up;
+    /// otherwise network jitter drains the player node between frames and the audio
+    /// breaks up. We prime `jitterPrimeFrames` (~60 ms) before starting, and re-prime
+    /// after any gap so each new talk burst rebuilds its cushion.
+    private var jitterPending: [AVAudioPCMBuffer] = []
+    private var jitterPrimed = false
+    private var lastFrameTime: CFTimeInterval = 0
+    private let jitterPrimeFrames = 3
+    private let jitterGapSeconds: CFTimeInterval = 0.4
+
+    private var routeObserver: NSObjectProtocol?
 
     // MARK: - Session lifecycle (whole channel)
 
@@ -43,6 +62,7 @@ final class AudioEngineIO {
         guard !sessionActive else { return }
         do {
             try configureAudioSession()
+            observeRouteChanges()
             if !engine.attachedNodes.contains(player) {
                 engine.attach(player)
             }
@@ -60,10 +80,16 @@ final class AudioEngineIO {
     func stopSession() {
         engine.inputNode.removeTap(onBus: 0)
         captureConverter = nil
+        txAccumulator.removeAll()
+        resetPlayback()
         player.stop()
         engine.stop()
         if engine.attachedNodes.contains(player) {
             engine.detach(player)
+        }
+        if let routeObserver {
+            NotificationCenter.default.removeObserver(routeObserver)
+            self.routeObserver = nil
         }
         deactivateAudioSession()
         sessionActive = false
@@ -76,10 +102,11 @@ final class AudioEngineIO {
 
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
-        let converter = AVAudioConverter(from: inputFormat, to: format)
-        captureConverter = converter
+        captureConverter = AVAudioConverter(from: inputFormat, to: format)
+        txAccumulator.removeAll()
 
-        input.installTap(onBus: 0, bufferSize: AVAudioFrameCount(frameSamples), format: inputFormat) {
+        // A larger tap buffer yields stable callbacks; we re-chunk into exact 20 ms frames.
+        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) {
             [weak self] buffer, _ in
             guard let self, let converter = self.captureConverter else { return }
             self.encodeAndSend(buffer: buffer, converter: converter)
@@ -91,6 +118,7 @@ final class AudioEngineIO {
     func stopCapture() {
         engine.inputNode.removeTap(onBus: 0)
         captureConverter = nil
+        txAccumulator.removeAll()
         // Engine + player keep running so we can still hear others.
     }
 
@@ -101,12 +129,37 @@ final class AudioEngineIO {
         guard let pcm = try? codec.decode(frame: encoded),
               let buffer = makeBuffer(from: pcm) else { return }
         if !sessionActive { startSession() }
-        if !player.isPlaying { player.play() }
-        player.scheduleBuffer(buffer, completionHandler: nil)
         onOutputLevel?(Self.rmsLevel(pcm))
+
+        let now = CACurrentMediaTime()
+        if now - lastFrameTime > jitterGapSeconds { resetPlayback() }   // new burst → re-prime
+        lastFrameTime = now
+
+        if jitterPrimed {
+            schedule(buffer)
+            return
+        }
+        // Building the initial cushion: hold frames until we have a lead, then release.
+        jitterPending.append(buffer)
+        if jitterPending.count >= jitterPrimeFrames {
+            jitterPrimed = true
+            if !player.isPlaying { player.play() }
+            for pending in jitterPending { schedule(pending) }
+            jitterPending.removeAll()
+        }
+    }
+
+    /// Drop the jitter cushion so the next frame starts a fresh burst.
+    private func resetPlayback() {
+        jitterPending.removeAll()
+        jitterPrimed = false
     }
 
     // MARK: - Private
+
+    private func schedule(_ buffer: AVAudioPCMBuffer) {
+        player.scheduleBuffer(buffer, completionHandler: nil)
+    }
 
     private func makeBuffer(from pcm: Data) -> AVAudioPCMBuffer? {
         let frames = UInt32(pcm.count / MemoryLayout<Int16>.size)
@@ -123,19 +176,39 @@ final class AudioEngineIO {
     }
 
     private func encodeAndSend(buffer: AVAudioPCMBuffer, converter: AVAudioConverter) {
-        guard let outBuffer = AVAudioPCMBuffer(pcmFormat: format,
-                                               frameCapacity: AVAudioFrameCount(frameSamples)) else { return }
+        // Size the output by the sample-rate ratio (e.g. 48 kHz → 16 kHz is 3:1).
+        let ratio = format.sampleRate / buffer.format.sampleRate
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1
+        guard capacity > 0,
+              let outBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return }
+
+        // Feed the source buffer exactly once; signal "no more" on any re-request so the
+        // converter doesn't double-consume the same samples (which garbles the audio).
+        var fed = false
         var error: NSError?
         converter.convert(to: outBuffer, error: &error) { _, outStatus in
+            if fed {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            fed = true
             outStatus.pointee = .haveData
             return buffer
         }
-        guard error == nil, let int16Ptr = outBuffer.int16ChannelData else { return }
+        guard error == nil, outBuffer.frameLength > 0, let int16Ptr = outBuffer.int16ChannelData else { return }
+
         let byteCount = Int(outBuffer.frameLength) * MemoryLayout<Int16>.size
-        let pcm = Data(bytes: int16Ptr[0], count: byteCount)
-        onInputLevel?(Self.rmsLevel(pcm))
-        if let encoded = try? codec.encode(pcm: pcm) {
-            onEncodedFrame?(encoded)
+        txAccumulator.append(Data(bytes: int16Ptr[0], count: byteCount))
+
+        // Emit only whole 20 ms frames; keep any remainder for the next callback.
+        while txAccumulator.count >= frameBytes {
+            let frame = txAccumulator.prefix(frameBytes)
+            txAccumulator.removeFirst(frameBytes)
+            let pcm = Data(frame)
+            onInputLevel?(Self.rmsLevel(pcm))
+            if let encoded = try? codec.encode(pcm: pcm) {
+                onEncodedFrame?(encoded)
+            }
         }
     }
 
@@ -157,13 +230,32 @@ final class AudioEngineIO {
 
     private func configureAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
-        try session.setPreferredSampleRate(sampleRate)
-        try session.setPreferredIOBufferDuration(0.02)
+        // `.default` mode + `.defaultToSpeaker` plays out the loud bottom speaker (a
+        // walkie-talkie should be heard without raising the phone to your ear). PTT is
+        // half-duplex — we never capture and play at the same time — so we skip
+        // `.voiceChat`'s aggressive processing, which both routes to the quiet earpiece
+        // and pumps/gates the signal.
+        try session.setCategory(.playAndRecord,
+                                mode: .default,
+                                options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP])
         try session.setActive(true)
-        // voiceChat mode otherwise routes to the quiet earpiece; force the loudspeaker
-        // for a walkie-talkie feel (no-op when a Bluetooth headset is connected).
         try? session.overrideOutputAudioPort(.speaker)
+    }
+
+    /// iOS can yank the route back to the earpiece on interruptions/category nudges.
+    /// Re-assert the loudspeaker, but only when we're actually stuck on the built-in
+    /// receiver — never steal the route from plugged-in headphones or Bluetooth.
+    private func observeRouteChanges() {
+        guard routeObserver == nil else { return }
+        routeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            let session = AVAudioSession.sharedInstance()
+            let onReceiver = session.currentRoute.outputs.contains { $0.portType == .builtInReceiver }
+            if onReceiver { try? session.overrideOutputAudioPort(.speaker) }
+        }
     }
 
     private func deactivateAudioSession() {

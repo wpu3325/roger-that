@@ -71,6 +71,7 @@ final class AppState: ObservableObject {
                         timestamp: Date(),
                         isLocal: false
                     ))
+                    Haptics.messageReceived()
                 }
             }
         }
