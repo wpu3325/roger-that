@@ -37,9 +37,15 @@ final class SoundEffects {
 /// Thin wrapper over UIKit haptics so call sites read intentfully.
 @MainActor
 enum Haptics {
-    /// A short notification buzz for an incoming text message.
+    private static let impact: UIImpactFeedbackGenerator = {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        return generator
+    }()
+
+    /// A small, short tap for an incoming text message.
     static func messageReceived() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        impact.impactOccurred()
+        impact.prepare()   // re-arm for the next one (lower latency)
     }
 }

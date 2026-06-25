@@ -16,5 +16,6 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .task { appState.bootstrap() }   // deferred startup — keeps launch snappy
     }
 }

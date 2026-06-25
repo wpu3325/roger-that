@@ -35,7 +35,10 @@ final class BLEMeshLink: NSObject, Link, @unchecked Sendable {
                 if let char = rxChar { peripheralManager?.updateValue(data, for: char, onSubscribedCentrals: [central]) }
             } else if let p = connectedPeripherals[peer] {
                 if let tx = peripheralTXChars[peer] {
-                    p.writeValue(data, for: tx, type: .withoutResponse)
+                    // Write WITH response: it reliably fires the peripheral's didReceiveWrite
+                    // (write-without-response delivery is flaky across iOS versions). BLE only
+                    // carries low-rate text/presence, so the per-write ACK cost is fine.
+                    p.writeValue(data, for: tx, type: .withResponse)
                 }
             }
         }
@@ -222,12 +225,22 @@ extension BLEMeshLink: CBPeripheralDelegate {
                     error: Error?) {
         let handle = PeerHandle("peripheral-\(p.identifier)")
         for ch in service.characteristics ?? [] {
-            if ch.uuid == txCharUUID {
-                lock.withLock { peripheralTXChars[handle] = ch }
-                lock.withLock { connectedPeripherals[handle] = p }
+            // The peripheral exposes a SINGLE characteristic (rxCharUUID) that is both
+            // notify (peripheral→central) and write (central→peripheral). Subscribe for
+            // inbound notifications AND keep it as our write target, so this one connection
+            // is fully bidirectional. (Previously we only registered a separate txCharUUID
+            // that the peripheral never exposes, so the central→peripheral path — and the
+            // .connected event — never happened, making every link one-way.)
+            guard ch.uuid == rxCharUUID || ch.uuid == txCharUUID else { continue }
+            let writable = ch.properties.contains(.write) || ch.properties.contains(.writeWithoutResponse)
+            if writable {
+                lock.withLock {
+                    peripheralTXChars[handle] = ch
+                    connectedPeripherals[handle] = p
+                }
                 emit(handle, .connected)
             }
-            if ch.uuid == rxCharUUID {
+            if ch.properties.contains(.notify) {
                 p.setNotifyValue(true, for: ch)
             }
         }

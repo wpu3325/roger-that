@@ -39,6 +39,10 @@ final class ChannelStore {
         saveMetas(loadMetas().filter { $0.channelID != channelID })
     }
 
+    /// Channel metadata only (no Keychain) — cheap enough to call at launch so the channel
+    /// list routes correctly on the first frame, before the full `load()` runs in bootstrap.
+    func metadataList() -> [ChannelMetadata] { loadMetas() }
+
     // MARK: - Metadata (UserDefaults)
 
     private func loadMetas() -> [ChannelMetadata] {

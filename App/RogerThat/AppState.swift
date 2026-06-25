@@ -96,11 +96,24 @@ final class AppState: ObservableObject {
         UserDefaults.standard.string(forKey: "rogerthat.callSign") ?? "Me"
     }
 
+    private var didBootstrap = false
+
     init() {
         let ble = BLEMeshLink(channelIDHash: 0)
         bleLink = ble
         hub = LinkHub(base: ble)
         PTTIntentBridge.shared.appState = self
+        // Populate the list from metadata only (cheap UserDefaults read, no Keychain/BLE)
+        // so the root view routes to the channel list on the first frame — no first-run
+        // flash. The heavy work (Keychain keys + starting CoreBluetooth + sessions) is
+        // deferred to bootstrap(), which is what removes the launch lag.
+        joinedChannels = store.metadataList()
+    }
+
+    /// Deferred startup: load saved channels and begin background collection. Idempotent.
+    func bootstrap() {
+        guard !didBootstrap else { return }
+        didBootstrap = true
         loadPersistedChannels()
     }
 
