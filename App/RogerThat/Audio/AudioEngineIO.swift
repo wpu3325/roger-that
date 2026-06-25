@@ -7,6 +7,12 @@ private let frameSamples = 320
 private let frameBytes = frameSamples * MemoryLayout<Int16>.size
 private let sampleRate: Double = 16_000
 
+/// One-shot flag for the `@Sendable` converter input block. The block is invoked
+/// synchronously within `convert`, so a single-threaded mutable flag is safe.
+private final class FedFlag: @unchecked Sendable {
+    var value = false
+}
+
 /// Manages AVAudioEngine for PTT capture and playback.
 ///
 /// The engine + player node run for the whole time you're in a channel (started via
@@ -201,14 +207,16 @@ final class AudioEngineIO: @unchecked Sendable {
 
         // Feed the source buffer exactly once; signal "no more" on any re-request so the
         // converter doesn't double-consume the same samples (which garbles the audio).
-        var fed = false
+        // The input block is `@Sendable`, so the "already fed" flag lives in a Sendable box
+        // rather than a captured `var` (which strict concurrency flags).
+        let fed = FedFlag()
         var error: NSError?
         converter.convert(to: outBuffer, error: &error) { _, outStatus in
-            if fed {
+            if fed.value {
                 outStatus.pointee = .noDataNow
                 return nil
             }
-            fed = true
+            fed.value = true
             outStatus.pointee = .haveData
             return buffer
         }

@@ -1,5 +1,5 @@
 import SwiftUI
-import AVFoundation
+@preconcurrency import AVFoundation
 
 /// A fullscreen QR-code scanner. Calls `onScan` with the raw string on success.
 struct QRScannerView: UIViewControllerRepresentable {
