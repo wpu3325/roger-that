@@ -13,7 +13,9 @@ struct RogerThatApp: App {
                 .environmentObject(appState)
         }
         .onChange(of: scenePhase) { _, phase in
-            appState.isForeground = (phase == .active)
+            let active = (phase == .active)
+            appState.isForeground = active
+            NotificationManager.shared.setForeground(active)
         }
     }
 }
@@ -31,26 +33,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // the one on screen (then it's redundant; the chat shows it live).
     // `nonisolated` because UNUserNotificationCenterDelegate isn't MainActor-isolated while
     // this class is (via UIApplicationDelegate); we hop to the main actor to read state.
-    // UNUserNotificationCenterDelegate callbacks are delivered on the main thread, so we
-    // assume main-actor isolation and run synchronously — this avoids "sending" the
-    // non-Sendable completionHandler across an actor boundary (which a Task hop would).
+    // Both answers come from NotificationManager's thread-safe snapshot, so we call the
+    // completion handler synchronously here — no actor hop, nothing sent across a boundary.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             willPresent notification: UNNotification,
                                             withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let channelID = notification.request.content.userInfo["channelID"] as? String
-        MainActor.assumeIsolated {
-            completionHandler(NotificationManager.shared.isOnScreen(channelID) ? [] : [.banner, .sound])
-        }
+        let onScreen = NotificationManager.shared.isOnScreen(channelID)
+        completionHandler(onScreen ? [] : [.banner, .sound])
     }
 
-    // Tapped a notification → open that channel.
+    // Tapped a notification → open that channel (handleTap hops to the main actor itself).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
         let channelID = response.notification.request.content.userInfo["channelID"] as? String
-        MainActor.assumeIsolated {
-            NotificationManager.shared.handleTap(channelID)
-            completionHandler()
-        }
+        NotificationManager.shared.handleTap(channelID)
+        completionHandler()
     }
 }

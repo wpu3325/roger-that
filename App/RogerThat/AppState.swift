@@ -108,7 +108,7 @@ final class AppState: ObservableObject {
         bleLink = ble
         hub = LinkHub(base: ble)
         PTTIntentBridge.shared.appState = self
-        NotificationManager.shared.appState = self
+        NotificationManager.shared.bind(self)
         // Populate the list from metadata only (cheap UserDefaults read, no Keychain/BLE)
         // so the root view routes to the channel list on the first frame — no first-run
         // flash. The heavy work (Keychain keys + starting CoreBluetooth + sessions) is
@@ -233,6 +233,7 @@ final class AppState: ObservableObject {
         voiceLevel = 0
 
         activeChannelID = channelID
+        NotificationManager.shared.setActiveChannel(channelID)
         guard let channelID, let channel = channelsByID[channelID] else {
             session = nil
             self.channel = nil

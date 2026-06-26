@@ -5,23 +5,44 @@ import UserNotifications
 /// app is backgrounded / the screen is locked, or when the user is on a different page than
 /// the channel a message arrived on. These are *local* notifications, so no entitlement and
 /// no APNs is needed; they work fully offline.
-@MainActor
-final class NotificationManager {
+///
+/// Not `@MainActor`: the `UNUserNotificationCenterDelegate` callbacks are nonisolated, so this
+/// keeps a small lock-protected snapshot of foreground/active-channel state (mirrored from
+/// `AppState`) that the delegate can read synchronously — avoiding any actor hop that would
+/// "send" the non-Sendable completion handler across a boundary.
+final class NotificationManager: @unchecked Sendable {
     static let shared = NotificationManager()
 
-    /// Set by `AppState` so taps can deep-link and foreground suppression can be decided.
-    weak var appState: AppState?
-
+    private let lock = NSLock()
+    private weak var appState: AppState?
+    private var foreground = true
+    private var activeID: String?
     private var requested = false
-    private var authorized = false
+
+    /// Wire up the app state (for deep-link taps) once at startup.
+    func bind(_ appState: AppState) {
+        lock.withLock { self.appState = appState }
+    }
+
+    /// Mirror of `scenePhase == .active`.
+    func setForeground(_ value: Bool) {
+        lock.withLock { foreground = value }
+    }
+
+    /// Mirror of the currently open channel (nil on the channel list).
+    func setActiveChannel(_ channelID: String?) {
+        lock.withLock { activeID = channelID }
+    }
 
     /// Ask once, in context (first channel activity) — not at launch.
     func requestAuthorizationIfNeeded() {
-        guard !requested else { return }
-        requested = true
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            Task { @MainActor in self.authorized = granted }
+        let shouldAsk: Bool = lock.withLock {
+            if requested { return false }
+            requested = true
+            return true
         }
+        guard shouldAsk else { return }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
     /// Post a banner for a received message. `channelID` threads a channel's notifications.
@@ -38,15 +59,15 @@ final class NotificationManager {
     }
 
     /// True when the given channel is the one currently open in the foreground (so a banner
-    /// would be redundant — the message is already on screen).
+    /// would be redundant — the message is already on screen). Safe to call off the main actor.
     func isOnScreen(_ channelID: String?) -> Bool {
-        guard let appState else { return false }
-        return appState.isForeground && appState.activeChannelID == channelID
+        lock.withLock { foreground && activeID == channelID }
     }
 
-    /// Notification tapped: open (rejoin) that channel.
+    /// Notification tapped: open (rejoin) that channel on the main actor.
     func handleTap(_ channelID: String?) {
         guard let channelID else { return }
-        appState?.openChannel(channelID)
+        let appState = lock.withLock { self.appState }
+        Task { @MainActor in appState?.openChannel(channelID) }
     }
 }
