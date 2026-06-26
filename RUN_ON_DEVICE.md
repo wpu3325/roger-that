@@ -41,8 +41,8 @@ The committed signing is tied to one developer account. To build under your own:
 
 > **Do not add the Push to Talk capability.** It was deliberately removed — it requires
 > a paid Apple Developer account ($99/yr) and a Personal Team cannot provision it. The
-> entitlements file is intentionally empty. The app uses an in-app PTT button + the
-> Action Button instead.
+> entitlements file is intentionally empty. The app uses an in-app PTT button
+> (hold + tap-to-toggle) instead.
 
 ## Step 3 — Run on device
 

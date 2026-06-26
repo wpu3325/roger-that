@@ -16,23 +16,22 @@
 		3CCE8D6E9CA194ADA74A9925 /* AudioEngineIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7A09074E577F46E08A583F /* AudioEngineIO.swift */; };
 		3F756327C3C0E64AB115C032 /* BLEMeshLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */; };
 		55E5ACB6D726E14B4AAA3819 /* RogerThatCore in Frameworks */ = {isa = PBXBuildFile; productRef = 24E981F9B34DD13828168FEA /* RogerThatCore */; };
+		5E0E5B8D05BF6310E621292C /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BA877C05548B51168F42FE8 /* OnboardingView.swift */; };
 		699120D640061EAF47595F01 /* TalkButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 270DDB5F7C8182E1ED1536C9 /* TalkButton.swift */; };
 		6A9614BB65F817B576A50F67 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407AB00531675A8A30B238D0 /* RootView.swift */; };
 		6D1734EEE265F0920D16A6D4 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72B50E2A58CF744F53D18BED /* AppState.swift */; };
 		6EDF014837EABFB177090E03 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667DA1335C389BF6A179759C /* HelpView.swift */; };
 		730BF9C5EE175A839C036731 /* MultipeerVoiceLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A75B316517ADEBF006D929D /* MultipeerVoiceLink.swift */; };
 		792A786C4C885AE59A55E46D /* roger-that-icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 046363F438373C9613F20A35 /* roger-that-icon.icon */; };
-		80DF5BFB7005E3412A21A25C /* ActionButtonGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63986AD21802BA2B819B7789 /* ActionButtonGuideView.swift */; };
 		829A60D8709826E9A2A3029B /* ChannelQRView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5B6703F23C2CF3107B420F /* ChannelQRView.swift */; };
 		8477CBABC288830740CB7B8B /* Feedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DADADF42F560D6EFED3906 /* Feedback.swift */; };
 		8F09BB39B0DD5325CA741806 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1EF8DCF9A3BE1CB4A8BB37 /* NotificationManager.swift */; };
 		91E7B3D375D68E8442700E79 /* MessageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C791AEB014F0A42F380A5E47 /* MessageStore.swift */; };
-		B81AFC933AD4A89170D776F9 /* TogglePTTIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF900A7AB4DEDD8C53B03CA /* TogglePTTIntent.swift */; };
 		B8821C62D4CEEA17AD641DFC /* TextChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */; };
 		BBACF0110583E60B0B6423CA /* ChannelListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676878381D54073576FE43D4 /* ChannelListView.swift */; };
 		C72E7B400497BCD335509353 /* ChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013AB27B3698C2DA444C657C /* ChannelView.swift */; };
-		D6B5427A8B500A61424C5339 /* PTTIntentBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF31972EA69CFDBC59620D2 /* PTTIntentBridge.swift */; };
 		D8A6CD9BCFCAB96AE903141F /* RogerThatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188F0612146276232F9210C5 /* RogerThatApp.swift */; };
+		DB190FE5AD95E413CEA7D4C6 /* PermissionPrimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B5810DC4A10D0A97555CE3A /* PermissionPrimer.swift */; };
 		EF773C297EE87D19AF5B28F7 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87EB121A0BE5874766FC3DA /* QRScannerView.swift */; };
 		FBFC85BD359CF0C5933FAB98 /* start_talk.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 67623D54F7048D01A86C828B /* start_talk.mp3 */; };
 		FCA74BF0EA9F1A945DC40816 /* CreateOrJoinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */; };
@@ -44,12 +43,13 @@
 		046363F438373C9613F20A35 /* roger-that-icon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = "roger-that-icon.icon"; sourceTree = "<group>"; };
 		0A9E5E87AF7A94BA261EA11A /* PushToTalkController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushToTalkController.swift; sourceTree = "<group>"; };
 		188F0612146276232F9210C5 /* RogerThatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RogerThatApp.swift; sourceTree = "<group>"; };
+		1BA877C05548B51168F42FE8 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		270DDB5F7C8182E1ED1536C9 /* TalkButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkButton.swift; sourceTree = "<group>"; };
 		2E9D94B4A617F0E67883293C /* VoiceWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceWaveformView.swift; sourceTree = "<group>"; };
 		396888541F0D5FAE6B139058 /* RogerThat.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RogerThat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateOrJoinView.swift; sourceTree = "<group>"; };
 		407AB00531675A8A30B238D0 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		63986AD21802BA2B819B7789 /* ActionButtonGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonGuideView.swift; sourceTree = "<group>"; };
+		5B5810DC4A10D0A97555CE3A /* PermissionPrimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionPrimer.swift; sourceTree = "<group>"; };
 		65CA9982E4E8745295013443 /* RosterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosterView.swift; sourceTree = "<group>"; };
 		667DA1335C389BF6A179759C /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		67623D54F7048D01A86C828B /* start_talk.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = start_talk.mp3; sourceTree = "<group>"; };
@@ -57,7 +57,6 @@
 		72B50E2A58CF744F53D18BED /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		7979E3CE2321FAD2FD59D756 /* roger-that */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "roger-that"; path = .; sourceTree = SOURCE_ROOT; };
 		7E155E003DCD336248EB3A41 /* BLEMeshLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMeshLink.swift; sourceTree = "<group>"; };
-		7FF31972EA69CFDBC59620D2 /* PTTIntentBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTTIntentBridge.swift; sourceTree = "<group>"; };
 		88DADADF42F560D6EFED3906 /* Feedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Feedback.swift; sourceTree = "<group>"; };
 		8C5B6703F23C2CF3107B420F /* ChannelQRView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelQRView.swift; sourceTree = "<group>"; };
 		8D7A09074E577F46E08A583F /* AudioEngineIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngineIO.swift; sourceTree = "<group>"; };
@@ -68,7 +67,6 @@
 		CA1EF8DCF9A3BE1CB4A8BB37 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextChannelView.swift; sourceTree = "<group>"; };
 		EB81655C903DACB76EA12874 /* end_talk.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = end_talk.mp3; sourceTree = "<group>"; };
-		FDF900A7AB4DEDD8C53B03CA /* TogglePTTIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TogglePTTIntent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,12 +110,12 @@
 		44448B90CE328BF97D7CB41E /* UI */ = {
 			isa = PBXGroup;
 			children = (
-				63986AD21802BA2B819B7789 /* ActionButtonGuideView.swift */,
 				676878381D54073576FE43D4 /* ChannelListView.swift */,
 				8C5B6703F23C2CF3107B420F /* ChannelQRView.swift */,
 				013AB27B3698C2DA444C657C /* ChannelView.swift */,
 				3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */,
 				667DA1335C389BF6A179759C /* HelpView.swift */,
+				1BA877C05548B51168F42FE8 /* OnboardingView.swift */,
 				A87EB121A0BE5874766FC3DA /* QRScannerView.swift */,
 				407AB00531675A8A30B238D0 /* RootView.swift */,
 				65CA9982E4E8745295013443 /* RosterView.swift */,
@@ -131,9 +129,7 @@
 		5FCB87E8672364925ABD8BDA /* PTT */ = {
 			isa = PBXGroup;
 			children = (
-				7FF31972EA69CFDBC59620D2 /* PTTIntentBridge.swift */,
 				0A9E5E87AF7A94BA261EA11A /* PushToTalkController.swift */,
-				FDF900A7AB4DEDD8C53B03CA /* TogglePTTIntent.swift */,
 			);
 			path = PTT;
 			sourceTree = "<group>";
@@ -149,6 +145,7 @@
 				44448B90CE328BF97D7CB41E /* UI */,
 				72B50E2A58CF744F53D18BED /* AppState.swift */,
 				CA1EF8DCF9A3BE1CB4A8BB37 /* NotificationManager.swift */,
+				5B5810DC4A10D0A97555CE3A /* PermissionPrimer.swift */,
 				046363F438373C9613F20A35 /* roger-that-icon.icon */,
 				188F0612146276232F9210C5 /* RogerThatApp.swift */,
 			);
@@ -285,7 +282,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				80DF5BFB7005E3412A21A25C /* ActionButtonGuideView.swift in Sources */,
 				6D1734EEE265F0920D16A6D4 /* AppState.swift in Sources */,
 				3CCE8D6E9CA194ADA74A9925 /* AudioEngineIO.swift in Sources */,
 				3F756327C3C0E64AB115C032 /* BLEMeshLink.swift in Sources */,
@@ -299,8 +295,9 @@
 				91E7B3D375D68E8442700E79 /* MessageStore.swift in Sources */,
 				730BF9C5EE175A839C036731 /* MultipeerVoiceLink.swift in Sources */,
 				8F09BB39B0DD5325CA741806 /* NotificationManager.swift in Sources */,
+				5E0E5B8D05BF6310E621292C /* OnboardingView.swift in Sources */,
 				0D9B82F44C8E4C9D2BECE9CC /* OpusCodec.swift in Sources */,
-				D6B5427A8B500A61424C5339 /* PTTIntentBridge.swift in Sources */,
+				DB190FE5AD95E413CEA7D4C6 /* PermissionPrimer.swift in Sources */,
 				17AA9902208879EF059C44FA /* PushToTalkController.swift in Sources */,
 				EF773C297EE87D19AF5B28F7 /* QRScannerView.swift in Sources */,
 				D8A6CD9BCFCAB96AE903141F /* RogerThatApp.swift in Sources */,
@@ -308,7 +305,6 @@
 				1AB7E02F763AB70693091580 /* RosterView.swift in Sources */,
 				699120D640061EAF47595F01 /* TalkButton.swift in Sources */,
 				B8821C62D4CEEA17AD641DFC /* TextChannelView.swift in Sources */,
-				B81AFC933AD4A89170D776F9 /* TogglePTTIntent.swift in Sources */,
 				308B1C51DBE7A09483BD7B11 /* VoiceWaveformView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

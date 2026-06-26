@@ -22,8 +22,8 @@ final class PushToTalkController: NSObject {
         isTalking = true
         onFloorStateChange?(.talkingLocal)
 
-        // Entry points (the on-screen button gesture and the Action Button intent) both
-        // run on the main actor, so cueing here is safe.
+        // The on-screen button's gesture (hold + tap-to-toggle) runs on the main actor,
+        // so cueing here is safe.
         MainActor.assumeIsolated { SoundEffects.shared.playStartTalk() }
 
         sendTalkStart()

@@ -4,7 +4,6 @@ import RogerThatCore
 /// Main in-channel screen.
 struct ChannelView: View {
     @EnvironmentObject var appState: AppState
-    @State private var showActionButtonGuide = false
     @State private var showInviteQR = false
     @State private var keyboardVisible = false
     @State private var showRename = false
@@ -61,11 +60,6 @@ struct ChannelView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button {
-                            showActionButtonGuide = true
-                        } label: {
-                            Label("Action Button setup", systemImage: "button.angledtop.vertical.right")
-                        }
-                        Button {
                             renameText = appState.activeMetadata?.name ?? ""
                             showRename = true
                         } label: {
@@ -87,9 +81,6 @@ struct ChannelView: View {
                         Image(systemName: "ellipsis.circle")
                     }
                 }
-            }
-            .sheet(isPresented: $showActionButtonGuide) {
-                ActionButtonGuideView()
             }
             .alert("Rename channel", isPresented: $showRename) {
                 TextField("Name", text: $renameText)

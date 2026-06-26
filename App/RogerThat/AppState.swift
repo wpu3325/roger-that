@@ -107,7 +107,6 @@ final class AppState: ObservableObject {
         let ble = BLEMeshLink(channelIDHash: 0)
         bleLink = ble
         hub = LinkHub(base: ble)
-        PTTIntentBridge.shared.appState = self
         NotificationManager.shared.bind(self)
         // Populate the list from metadata only (cheap UserDefaults read, no Keychain/BLE)
         // so the root view routes to the channel list on the first frame — no first-run

@@ -48,9 +48,9 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 | `App/RogerThat/Transports/MultipeerVoiceLink.swift` | Single-MCSession voice link (tiebreak invites) |
 | `App/RogerThat/Audio/AudioEngineIO.swift` | Mic capture + AVAudioPlayerNode playback + RMS levels |
 | `App/RogerThat/PTT/PushToTalkController.swift` | Half-duplex PTT; TALK_START/END packetization |
-| `App/RogerThat/PTT/TogglePTTIntent.swift` | AppIntent for Action Button PTT toggle |
 | `App/RogerThat/UI/HelpView.swift` | In-app how-to guide |
-| `App/RogerThat/UI/ActionButtonGuideView.swift` | Step-by-step Action Button setup |
+| `App/RogerThat/UI/OnboardingView.swift` | First-run welcome → description → permission steps → call sign |
+| `App/RogerThat/PermissionPrimer.swift` | Fires each OS permission prompt during onboarding |
 | `project.yml` | XcodeGen spec; edit this, not the .pbxproj |
 
 ## Testing
@@ -90,7 +90,7 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   mutable statics on value types as non-concurrency-safe.
 
 - **Push to Talk entitlement removed**: requires paid Apple Developer account ($99/yr).
-  Personal Team cannot provision it. App uses in-app PTT button + Action Button instead.
+  Personal Team cannot provision it. App uses an in-app PTT button (hold + tap-to-toggle).
   Do not re-add `com.apple.developer.push-to-talk` to the entitlements file.
 
 - **`withUnsafeBytes` ambiguity in Swift 6**: inside a `Data` extension method, the
@@ -209,8 +209,8 @@ requires the full Xcode.app; it's not available from CLT-only installs.
 
 - **Half-duplex lockout**: PTT is half-duplex, so block local TX while a peer holds the floor.
   `AppState.canStartTalking` is false during `.talkingRemote`; `TalkButton` dims + disables and
-  all three start paths (hold, toggle, `TogglePTTIntent`) guard on it. Without this, two
-  simultaneous talkers garble each other (no AEC in `.default` mode).
+  both start paths (hold, tap-to-toggle) guard on it. Without this, two simultaneous talkers
+  garble each other (no AEC in `.default` mode).
 
 - **Audio engine must survive interruptions**: a phone call, Siri, route change, or media
   reset stops `AVAudioEngine` and it never restarts on its own — voice silently dies until
@@ -292,6 +292,22 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   are connected; with no peers it drops to ~every 30s (`PresenceBeaconPolicy`). A peer connecting
   triggers an immediate beacon, so back-off never delays first appearance. Roster sweep in
   `AppState` is 12s (was 5s). Battery only — no messaging-reliability tradeoff.
+
+- **Onboarding gate + permission priming**: first launch shows `OnboardingView` (gated by
+  `@AppStorage("rogerthat.onboardingComplete")` in `RootView`) — welcome animation → description
+  → one explanation-first screen per permission → call sign. `PermissionPrimer` fires each OS
+  prompt: Bluetooth by instantiating a throwaway `CBCentralManager`; Microphone via
+  `AVAudioApplication.requestRecordPermission`; Notifications/Camera via their request APIs.
+  **Local Network has no request API** — the prompt only appears on real Bonjour use, so the
+  primer briefly starts a throwaway Multipeer advertiser+browser (serviceType `rogerthat-v1`,
+  matching Info.plist) and there's no decision callback, so it just proceeds after a grace period.
+  The call sign is captured here (`rogerthat.callSign`); `CreateOrJoinView` still shows it
+  (pre-filled, editable).
+
+- **Action Button removed**: the hardware Action Button / Siri path (the `TogglePTTIntent`
+  AppIntent + `RogerThatShortcuts` + `PTTIntentBridge`) was deleted. PTT is in-app only
+  (hold + tap-to-toggle). Don't re-add an AppIntent unless you intend to bring back
+  Action Button / Siri control.
 
 ## Device install (current state)
 

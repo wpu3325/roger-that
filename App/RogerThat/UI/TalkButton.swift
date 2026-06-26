@@ -2,7 +2,7 @@ import SwiftUI
 import RogerThatCore
 
 /// Large push-and-hold PTT button; also supports tap-to-toggle mode.
-/// isToggleMode is persisted so the Action Button and on-screen button share the same mode.
+/// isToggleMode is persisted so the chosen mode (hold vs tap-to-toggle) survives relaunch.
 struct TalkButton: View {
     @EnvironmentObject var appState: AppState
     @AppStorage("rogerthat.pttToggleMode") private var isToggleMode = false

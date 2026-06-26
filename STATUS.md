@@ -64,8 +64,8 @@ Generated with XcodeGen. Builds in Xcode (human must verify — no `xcodebuild` 
 | Voice RX pipeline | ⚠️ untested-on-hardware | `voice.setHandlers` → decode → play; link+engine start on JOIN |
 | Remote-talking banner + watchdog | ⚠️ untested-on-hardware | Frame-driven + 1.2s timeout for consistency |
 | PushToTalkController | ⚠️ untested-on-hardware | TX only (mic tap); no longer manages voice-link lifecycle |
-| Action Button PTT (AppIntent) | ⚠️ untested-on-hardware | `TogglePTTIntent` + `AppShortcutsProvider`; runs silently |
-| Help + Action Button guides | 🔨 compiles-only | `HelpView`, `ActionButtonGuideView` |
+| Onboarding (welcome + permissions) | 🔨 compiles-only | `OnboardingView` + `PermissionPrimer`; first-run gate |
+| Help guide | 🔨 compiles-only | `HelpView` |
 | App icon (Icon Composer) | 🔨 compiles-only | `roger-that-icon.icon`; `ASSETCATALOG_COMPILER_APPICON_NAME` set |
 | Info.plist usage strings | ✅ verified | Camera + Mic + Bluetooth + Local Network; background modes; NSBonjourServices |
 | Entitlements | ✅ verified | EMPTY — push-to-talk removed (Personal Team can't provision it) |
@@ -105,4 +105,4 @@ Generated with XcodeGen. Builds in Xcode (human must verify — no `xcodebuild` 
 `xcodebuild` requires the full Xcode.app (not just CLT). This host has only CLT, so the app
 target is verified by `swift build` (Core), the project regenerating cleanly, and code review —
 NOT by an on-device or simulator run. The human must open `RogerThat.xcodeproj` in Xcode and
-`⌘R` onto a device to confirm BLE discovery, voice, and the Action Button.
+`⌘R` onto a device to confirm onboarding/permissions, BLE discovery, and voice.

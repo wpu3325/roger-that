@@ -50,12 +50,6 @@ struct HelpView: View {
                         detail: "Toggle the switch above the PTT button to switch to tap-to-toggle mode. Tap once to start talking, tap again to stop — useful if you need a free hand."
                     )
                     HelpRow(
-                        icon: "button.angledtop.vertical.right",
-                        iconColor: .orange,
-                        title: "Action Button (iPhone 15 Pro+)",
-                        detail: "Assign your Action Button to Toggle PTT for a hardware walkie-talkie feel. Press once to start talking, press again to stop — works in both PTT modes. Tap the action button icon in the top-right corner of the channel screen for setup instructions."
-                    )
-                    HelpRow(
                         icon: "wifi",
                         iconColor: .blue,
                         title: "Voice range",
@@ -89,7 +83,7 @@ struct HelpView: View {
                         icon: "clock.arrow.circlepath",
                         iconColor: .secondary,
                         title: "Channel history",
-                        detail: "Messages are stored in memory only. Closing the app clears the history. To reconnect to the same channel after everyone leaves, the creator needs to share the QR again."
+                        detail: "Your messages are saved on your phone, so they're still here when you reopen the app. Leaving a channel keeps its history under Archived — tap it to rejoin. Delete a channel to remove it and its history for good."
                     )
                     HelpRow(
                         icon: "lock.shield.fill",
