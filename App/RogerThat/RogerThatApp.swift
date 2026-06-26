@@ -31,11 +31,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // the one on screen (then it's redundant; the chat shows it live).
     // `nonisolated` because UNUserNotificationCenterDelegate isn't MainActor-isolated while
     // this class is (via UIApplicationDelegate); we hop to the main actor to read state.
+    // UNUserNotificationCenterDelegate callbacks are delivered on the main thread, so we
+    // assume main-actor isolation and run synchronously — this avoids "sending" the
+    // non-Sendable completionHandler across an actor boundary (which a Task hop would).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             willPresent notification: UNNotification,
                                             withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let channelID = notification.request.content.userInfo["channelID"] as? String
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             completionHandler(NotificationManager.shared.isOnScreen(channelID) ? [] : [.banner, .sound])
         }
     }
@@ -45,7 +48,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                                             didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
         let channelID = response.notification.request.content.userInfo["channelID"] as? String
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             NotificationManager.shared.handleTap(channelID)
             completionHandler()
         }
