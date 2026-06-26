@@ -1,10 +1,10 @@
 import SwiftUI
 import RogerThatCore
 
-struct ChatMessage: Identifiable, Equatable {
-    enum Kind: Equatable { case message, system }
+struct ChatMessage: Identifiable, Equatable, Codable, Sendable {
+    enum Kind: String, Equatable, Codable, Sendable { case message, system }
 
-    let id = UUID()
+    let id: UUID
     let kind: Kind
     let senderName: String
     let text: String
@@ -12,6 +12,7 @@ struct ChatMessage: Identifiable, Equatable {
     let isLocal: Bool
 
     init(kind: Kind = .message, senderName: String, text: String, timestamp: Date, isLocal: Bool) {
+        self.id = UUID()
         self.kind = kind
         self.senderName = senderName
         self.text = text
@@ -159,12 +160,17 @@ private struct MessageRow: View {
     let reveal: CGFloat
     let revealWidth: CGFloat
 
+    /// Breathing room between the bubble's trailing edge and the revealed time.
+    private let timeGap: CGFloat = 10
+
     var body: some View {
         ZStack(alignment: .trailing) {
             // Timestamp parked off the right edge; slides in as the row is dragged left.
+            // The leading inset keeps a gap between the bubble and the time once revealed.
             Text(message.timestamp, style: .time)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .padding(.leading, timeGap)
                 .frame(width: revealWidth, alignment: .leading)
                 .offset(x: revealWidth - reveal)
                 .opacity(Double(reveal / revealWidth))

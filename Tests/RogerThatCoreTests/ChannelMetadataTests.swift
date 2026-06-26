@@ -35,4 +35,26 @@ struct ChannelMetadataTests {
         let meta = ChannelMetadata(channelID: "xyz", name: "n", kind: .random, joinedAt: Date())
         #expect(meta.id == "xyz")
     }
+
+    @Test func defaultsToNotArchived() {
+        let meta = ChannelMetadata(channelID: "x", name: "n", kind: .random, joinedAt: Date())
+        #expect(meta.isArchived == false)
+    }
+
+    @Test func legacyJSONWithoutIsArchivedDecodesToFalse() throws {
+        // Channels saved before `isArchived` existed must still load.
+        let legacy = #"{"channelID":"abc","name":"Test","kind":"random","joinedAt":0}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ChannelMetadata.self, from: legacy)
+        #expect(decoded.isArchived == false)
+        #expect(decoded.name == "Test")
+    }
+
+    @Test func archivedFlagRoundTrips() throws {
+        let original = ChannelMetadata(channelID: "x", name: "Y", kind: .password,
+                                       joinedAt: Date(timeIntervalSince1970: 1), isArchived: true)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(ChannelMetadata.self, from: data)
+        #expect(decoded.isArchived == true)
+        #expect(decoded == original)
+    }
 }

@@ -14,13 +14,16 @@ public final class SessionManager: @unchecked Sendable {
     private let roster: Roster
     private let floor: PTTFloor
     private let crypto: ChannelCrypto
+    private let link: any Link
 
     private var onMessageReceived: (@Sendable (ReceivedMessage) -> Void)?
     private var onRosterChanged: (@Sendable () -> Void)?
     private let lock = NSLock()
 
-    /// Presence beacon interval.
+    /// Presence beacon interval + back-off-when-alone policy (battery).
     private var presenceTimer: DispatchSourceTimer?
+    private let beaconPolicy = PresenceBeaconPolicy()
+    private var beaconTick = 0
 
     public init(
         channel: Channel,
@@ -31,6 +34,7 @@ public final class SessionManager: @unchecked Sendable {
         self.channel = channel
         self.localID = localID
         self.displayName = displayName
+        self.link = link
         self.crypto = ChannelCrypto(key: channel.key)
         self.roster = Roster()
         self.floor = PTTFloor()
@@ -118,7 +122,15 @@ public final class SessionManager: @unchecked Sendable {
     private func schedulePresenceBeacon() {
         let timer = DispatchSource.makeTimerSource(queue: .global())
         timer.schedule(deadline: .now(), repeating: 10)
-        timer.setEventHandler { [weak self] in self?.broadcastPresence() }
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            let tick = self.beaconTick
+            self.beaconTick &+= 1
+            // Back off when no peers are connected — nothing to announce to (battery).
+            if self.beaconPolicy.shouldBeacon(tick: tick, hasPeers: !self.link.peers.isEmpty) {
+                self.broadcastPresence()
+            }
+        }
         timer.resume()
         presenceTimer = timer
     }

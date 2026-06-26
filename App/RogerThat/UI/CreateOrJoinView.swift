@@ -320,9 +320,11 @@ private struct PasswordChannelSheet: View {
     @State private var password = ""
     /// Computed on demand (PBKDF2 is deliberately slow — never per keystroke).
     @State private var verificationCode: String?
+    /// True while PBKDF2 runs off-main, so the UI shows progress instead of freezing.
+    @State private var deriving = false
 
     private var canEnter: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty && !deriving
     }
 
     var body: some View {
@@ -340,13 +342,8 @@ private struct PasswordChannelSheet: View {
                 }
 
                 Section {
-                    Button("Show verification code") {
-                        guard canEnter else { return }
-                        let channel = PasswordKey.channel(name: name.trimmingCharacters(in: .whitespaces),
-                                                          password: password)
-                        verificationCode = PasswordKey.fingerprint(of: channel.key)
-                    }
-                    .disabled(!canEnter)
+                    Button("Show verification code") { deriveVerification() }
+                        .disabled(!canEnter)
 
                     if let code = verificationCode {
                         VStack(alignment: .leading, spacing: 4) {
@@ -360,8 +357,18 @@ private struct PasswordChannelSheet: View {
                 }
 
                 Section {
-                    Button("Enter Channel") { enter() }
-                        .disabled(!canEnter)
+                    Button {
+                        enter()
+                    } label: {
+                        HStack {
+                            Text("Enter Channel")
+                            if deriving {
+                                Spacer()
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(!canEnter)
                 }
             }
             .navigationTitle("Password Channel")
@@ -374,11 +381,33 @@ private struct PasswordChannelSheet: View {
         }
     }
 
+    /// Derive the verification fingerprint off the main thread (PBKDF2 is ~100k iters).
+    private func deriveVerification() {
+        guard canEnter else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let pass = password
+        deriving = true
+        Task {
+            let fingerprint = await Task.detached(priority: .userInitiated) {
+                PasswordKey.fingerprint(of: PasswordKey.channel(name: trimmed, password: pass).key)
+            }.value
+            verificationCode = fingerprint
+            deriving = false
+        }
+    }
+
     private func enter() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, !password.isEmpty else { return }
-        let channel = PasswordKey.channel(name: trimmed, password: password)
-        appState.join(channel: channel, displayName: displayName, name: trimmed, kind: .password)
-        dismiss()
+        guard !trimmed.isEmpty, !password.isEmpty, !deriving else { return }
+        let pass = password
+        deriving = true
+        Task {
+            let channel = await Task.detached(priority: .userInitiated) {
+                PasswordKey.channel(name: trimmed, password: pass)
+            }.value
+            appState.join(channel: channel, displayName: displayName, name: trimmed, kind: .password)
+            deriving = false
+            dismiss()
+        }
     }
 }

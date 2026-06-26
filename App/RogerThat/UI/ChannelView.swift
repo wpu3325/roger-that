@@ -7,6 +7,9 @@ struct ChannelView: View {
     @State private var showActionButtonGuide = false
     @State private var showInviteQR = false
     @State private var keyboardVisible = false
+    @State private var showRename = false
+    @State private var renameText = ""
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -62,10 +65,23 @@ struct ChannelView: View {
                         } label: {
                             Label("Action Button setup", systemImage: "button.angledtop.vertical.right")
                         }
-                        Button(role: .destructive) {
+                        Button {
+                            renameText = appState.activeMetadata?.name ?? ""
+                            showRename = true
+                        } label: {
+                            Label("Rename channel", systemImage: "pencil")
+                        }
+                        // "Leave" keeps the channel (archived) and its history; you can rejoin.
+                        Button {
                             appState.leaveActiveChannel()
                         } label: {
                             Label("Leave channel", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                        // "Delete" permanently scrubs the channel, its key, and its history.
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            Label("Delete channel", systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -74,6 +90,21 @@ struct ChannelView: View {
             }
             .sheet(isPresented: $showActionButtonGuide) {
                 ActionButtonGuideView()
+            }
+            .alert("Rename channel", isPresented: $showRename) {
+                TextField("Name", text: $renameText)
+                Button("Cancel", role: .cancel) { }
+                Button("Save") {
+                    if let id = appState.activeChannelID { appState.rename(id, to: renameText) }
+                }
+            }
+            .alert("Delete channel?", isPresented: $showDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    if let id = appState.activeChannelID { appState.delete(id) }
+                }
+            } message: {
+                Text("This permanently removes the channel and its message history on this device.")
             }
             .sheet(isPresented: $showInviteQR) {
                 if let channel = appState.channel {

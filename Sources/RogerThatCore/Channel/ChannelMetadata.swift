@@ -19,13 +19,32 @@ public struct ChannelMetadata: Sendable, Equatable, Codable, Identifiable {
     public var name: String
     public let kind: Kind
     public let joinedAt: Date
+    /// `true` once the user "leaves" the channel: the session stops and it moves to the
+    /// Archived section, but its key + message history are kept (reopening rejoins).
+    /// "Delete" is the separate destructive action that scrubs everything.
+    public var isArchived: Bool
 
     public var id: String { channelID }
 
-    public init(channelID: String, name: String, kind: Kind, joinedAt: Date) {
+    public init(channelID: String, name: String, kind: Kind, joinedAt: Date, isArchived: Bool = false) {
         self.channelID = channelID
         self.name = name
         self.kind = kind
         self.joinedAt = joinedAt
+        self.isArchived = isArchived
+    }
+
+    // Custom decode so channels saved before `isArchived` existed still load (default false).
+    private enum CodingKeys: String, CodingKey {
+        case channelID, name, kind, joinedAt, isArchived
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        channelID = try c.decode(String.self, forKey: .channelID)
+        name = try c.decode(String.self, forKey: .name)
+        kind = try c.decode(Kind.self, forKey: .kind)
+        joinedAt = try c.decode(Date.self, forKey: .joinedAt)
+        isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
     }
 }

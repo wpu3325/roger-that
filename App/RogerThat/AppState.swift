@@ -63,7 +63,12 @@ final class AppState: ObservableObject {
     private var voiceWatchdog: Task<Void, Never>?
 
     private let store = ChannelStore()
+    private let messageStore = MessageStore()
     private var rosterTimer: DispatchSourceTimer?
+
+    /// Whether the app is in the foreground (drives notification suppression — a banner is
+    /// posted only for messages that aren't already on screen). Updated from scenePhase.
+    var isForeground = true
 
     /// False while a peer holds the floor — PTT is half-duplex, so we block local TX to
     /// avoid two people transmitting over each other and garbling the audio.
@@ -103,6 +108,7 @@ final class AppState: ObservableObject {
         bleLink = ble
         hub = LinkHub(base: ble)
         PTTIntentBridge.shared.appState = self
+        NotificationManager.shared.appState = self
         // Populate the list from metadata only (cheap UserDefaults read, no Keychain/BLE)
         // so the root view routes to the channel list on the first frame — no first-run
         // flash. The heavy work (Keychain keys + starting CoreBluetooth + sessions) is
@@ -114,6 +120,7 @@ final class AppState: ObservableObject {
     func bootstrap() {
         guard !didBootstrap else { return }
         didBootstrap = true
+        if !joinedChannels.isEmpty { NotificationManager.shared.requestAuthorizationIfNeeded() }
         loadPersistedChannels()
     }
 
@@ -124,21 +131,64 @@ final class AppState: ObservableObject {
     func join(channel: Channel, displayName: String,
               name: String? = nil, kind: ChannelMetadata.Kind = .random) {
         let id = channel.channelID
+        // Reuse the existing name if we're rejoining a channel we already know.
+        let existing = joinedChannels.first { $0.channelID == id }
         let meta = ChannelMetadata(
             channelID: id,
-            name: name ?? Self.defaultName(for: channel),
+            name: name ?? existing?.name ?? Self.defaultName(for: channel),
             kind: kind,
-            joinedAt: Date()
+            joinedAt: existing?.joinedAt ?? Date(),
+            isArchived: false
         )
+        if let idx = joinedChannels.firstIndex(where: { $0.channelID == id }) {
+            joinedChannels[idx] = meta            // un-archive if it was parked
+        }
         if sessions[id] == nil {
             store.add(meta, channel: channel)
             startSession(for: channel, meta: meta)
         }
-        setActive(id)
+        NotificationManager.shared.requestAuthorizationIfNeeded()
+        openChannel(id)
     }
 
-    /// Leave a channel entirely: stop its session, scrub it from storage, forget its history.
-    func leave(_ channelID: String) {
+    /// Open a channel from the list. If it was archived ("left"), rejoin it first — restart
+    /// its session — so its history is live again; otherwise just make it active.
+    func openChannel(_ channelID: String) {
+        if let idx = joinedChannels.firstIndex(where: { $0.channelID == channelID }),
+           joinedChannels[idx].isArchived {
+            joinedChannels[idx].isArchived = false
+            let meta = joinedChannels[idx]
+            if let channel = channelsByID[channelID] {
+                if sessions[channelID] == nil { startSession(for: channel, meta: meta) }
+                store.add(meta, channel: channel)   // persist the un-archive
+            }
+        }
+        setActive(channelID)
+    }
+
+    /// "Leave" a channel: stop its session but keep it (archived) along with its key and
+    /// message history. It moves to the Archived section; reopening rejoins it.
+    func archive(_ channelID: String) {
+        guard let idx = joinedChannels.firstIndex(where: { $0.channelID == channelID }) else { return }
+        if activeChannelID == channelID { setActive(nil) }
+        sessions[channelID]?.stop()
+        if let port = ports[channelID] { hub.removePort(port) }
+        sessions[channelID] = nil
+        ports[channelID] = nil
+        membersByChannel[channelID] = []                 // roster is runtime-only
+        knownMembersByChannel[channelID] = [localID]
+        unreadByChannel[channelID] = nil
+        joinedChannels[idx].isArchived = true
+        if let channel = channelsByID[channelID] {
+            store.add(joinedChannels[idx], channel: channel)   // persist isArchived
+        }
+        // channelsByID + messagesByChannel (and the on-disk history) are kept intact.
+        if sessions.isEmpty { stopTransport() }
+    }
+
+    /// "Delete" a channel entirely: scrub its key, metadata, and message history. The
+    /// storage teardown runs off-main so the list animates instantly (no deletion lag).
+    func delete(_ channelID: String) {
         if activeChannelID == channelID { setActive(nil) }
         sessions[channelID]?.stop()
         if let port = ports[channelID] { hub.removePort(port) }
@@ -150,13 +200,29 @@ final class AppState: ObservableObject {
         knownMembersByChannel[channelID] = nil
         unreadByChannel[channelID] = nil
         joinedChannels.removeAll { $0.channelID == channelID }
-        store.remove(channelID)
+        let store = self.store
+        let messageStore = self.messageStore
+        Task.detached(priority: .utility) {
+            store.remove(channelID)        // Keychain + UserDefaults, off the main thread
+            messageStore.delete(channelID) // history file
+        }
         if sessions.isEmpty { stopTransport() }
     }
 
-    /// Leave the channel that's currently open.
+    /// Rename a channel (persisted). No effect on its key or membership.
+    func rename(_ channelID: String, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let idx = joinedChannels.firstIndex(where: { $0.channelID == channelID }) else { return }
+        joinedChannels[idx].name = trimmed
+        if let channel = channelsByID[channelID] {
+            store.add(joinedChannels[idx], channel: channel)
+        }
+    }
+
+    /// "Leave" the channel that's currently open (archives it).
     func leaveActiveChannel() {
-        if let id = activeChannelID { leave(id) }
+        if let id = activeChannelID { archive(id) }
     }
 
     /// Open a channel (mirror its state + bring up voice), or nil to return to the list.
@@ -188,7 +254,7 @@ final class AppState: ObservableObject {
     private func startSession(for channel: Channel, meta: ChannelMetadata) {
         let id = channel.channelID
         channelsByID[id] = channel
-        messagesByChannel[id] = messagesByChannel[id] ?? []
+        messagesByChannel[id] = messagesByChannel[id] ?? messageStore.load(id)
         membersByChannel[id] = membersByChannel[id] ?? []
         knownMembersByChannel[id] = [localID]   // seed self so we never post "you joined"
 
@@ -300,10 +366,18 @@ final class AppState: ObservableObject {
         let name = membersByChannel[channelID]?.first { $0.id == senderID }?.displayName ?? "Peer"
         appendMessage(ChatMessage(senderName: name, text: text, timestamp: Date(), isLocal: false),
                       to: channelID)
-        if channelID == activeChannelID {
+
+        // On screen (this channel open, app foreground) → just a haptic. Otherwise (locked,
+        // backgrounded, or a different page) → a banner with the message text, and bump the
+        // unread badge when it's a different channel than the one we're looking at.
+        let onScreen = isForeground && channelID == activeChannelID
+        if onScreen {
             Haptics.messageReceived()
         } else {
-            unreadByChannel[channelID, default: 0] += 1
+            if channelID != activeChannelID { unreadByChannel[channelID, default: 0] += 1 }
+            let channelName = joinedChannels.first { $0.channelID == channelID }?.name ?? "Roger That"
+            NotificationManager.shared.postMessage(channelName: channelName, sender: name,
+                                                   body: text, channelID: channelID)
         }
     }
 
@@ -321,6 +395,7 @@ final class AppState: ObservableObject {
 
     private func appendMessage(_ message: ChatMessage, to channelID: String) {
         messagesByChannel[channelID, default: []].append(message)
+        messageStore.save(messagesByChannel[channelID] ?? [], for: channelID)
         if channelID == activeChannelID { messages = messagesByChannel[channelID] ?? [] }
     }
 
@@ -398,17 +473,42 @@ final class AppState: ObservableObject {
     // MARK: - Startup / timers
 
     private func loadPersistedChannels() {
-        for entry in store.load() {
-            startSession(for: entry.channel, meta: entry.meta)
+        // Read Keychain keys + on-disk history off the main thread, then install on main.
+        // This is what removes the launch stall (the reads no longer block the first frames).
+        let store = self.store
+        let messageStore = self.messageStore
+        Task.detached(priority: .userInitiated) {
+            let entries = store.load()
+            let histories: [String: [ChatMessage]] = entries.reduce(into: [:]) { acc, entry in
+                acc[entry.channel.channelID] = messageStore.load(entry.channel.channelID)
+            }
+            await MainActor.run { self.installPersistedChannels(entries, histories: histories) }
         }
         // Start on the channel list (no channel auto-opened).
+    }
+
+    private func installPersistedChannels(_ entries: [(meta: ChannelMetadata, channel: Channel)],
+                                          histories: [String: [ChatMessage]]) {
+        for entry in entries {
+            let id = entry.channel.channelID
+            channelsByID[id] = entry.channel
+            messagesByChannel[id] = histories[id] ?? []
+            if entry.meta.isArchived {
+                // Parked: no live session. History is available; opening it rejoins.
+                knownMembersByChannel[id] = [localID]
+                membersByChannel[id] = []
+            } else {
+                startSession(for: entry.channel, meta: entry.meta)
+            }
+        }
     }
 
     /// Periodically re-snapshot every channel's roster (belt-and-braces over the
     /// event-driven `setRosterChangedHandler`).
     private func scheduleRosterRefresh() {
         let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + 5, repeating: 5)
+        // Belt-and-braces over the event-driven roster handler; 12s keeps it cheap (battery).
+        timer.schedule(deadline: .now() + 12, repeating: 12)
         timer.setEventHandler { [weak self] in
             Task { @MainActor in
                 guard let self else { return }

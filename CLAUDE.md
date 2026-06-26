@@ -38,8 +38,11 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 | `Sources/RogerThatCore/Channel/ChannelMetadata.swift` | Codable persisted record of a joined channel |
 | `Sources/RogerThatCore/Protocol/VoiceBody.swift` | Seal/open voice frame bodies with the channel key |
 | `Sources/RogerThatCore/Crypto/PasswordKey.swift` | PBKDF2 channel key from name+password; verification fingerprint |
+| `Sources/RogerThatCore/Session/PresenceBeaconPolicy.swift` | Presence beacon back-off when alone (battery); pure + unit-tested |
 | `App/RogerThat/AppState.swift` | @MainActor; multi-channel sessions over a shared hub, active-channel mirror |
 | `App/RogerThat/Persistence/ChannelStore.swift` | Joined channels: metadata in UserDefaults, keys in Keychain |
+| `App/RogerThat/Persistence/MessageStore.swift` | Per-channel chat history persisted to disk (debounced, off-main) |
+| `App/RogerThat/NotificationManager.swift` | Local notifications for off-screen/backgrounded inbound messages |
 | `App/RogerThat/UI/ChannelListView.swift` | Channel-list home with unread badges + lock icons |
 | `App/RogerThat/Transports/BLEMeshLink.swift` | Dual peripheral+central CoreBluetooth |
 | `App/RogerThat/Transports/MultipeerVoiceLink.swift` | Single-MCSession voice link (tiebreak invites) |
@@ -52,10 +55,10 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 
 ## Testing
 
-73 unit tests across 9 suites — all in `Tests/RogerThatCoreTests/`:
+80 unit tests across 10 suites — all in `Tests/RogerThatCoreTests/`:
 
 ```bash
-swift test               # run all 73 tests
+swift test               # run all 80 tests
 swift test --filter PacketCodec   # run one suite
 ```
 
@@ -245,6 +248,42 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   `PasswordKey.fingerprint(of:)` is a short non-secret code (HKDF) both sides compare to
   confirm they typed the same password. PBKDF2 is hand-rolled on CryptoKit HMAC (single
   block, dkLen == 32) to keep Core platform-agnostic; verified against the RFC test vectors.
+
+- **Leave vs Delete (archive model)**: "Leave" (`AppState.archive`) stops the channel's
+  session but **keeps** its Keychain key, metadata (`isArchived: true`), and on-disk history —
+  it drops into the channel list's **Archived** section; tapping it (`openChannel`) rejoins
+  (un-archives + restarts the session). "Delete" (`AppState.delete`) is the destructive path:
+  scrubs key + metadata + the `MessageStore` history file. `ChannelMetadata.isArchived` decodes
+  to `false` for channels saved before the field existed (custom `init(from:)`).
+
+- **Message history is persisted**: `MessageStore` writes per-channel `[ChatMessage]` JSON to
+  Application Support (debounced 0.5s, off-main) so chat survives app restarts and archiving.
+  `ChatMessage` is now `Codable`+`Sendable` (stable `id`, `Kind` is a `String` enum). Loaded in
+  `startSession`/`installPersistedChannels`; saved in `appendMessage`.
+
+- **Channel deletion is off-main**: `delete()` updates the published list immediately (instant
+  List animation) then does Keychain/UserDefaults/file teardown in a detached task. `ChannelStore`
+  is `@unchecked Sendable` with an `NSLock` so an off-main `remove()` can't race an on-main
+  `add()` (archive/rename).
+
+- **Startup loads off-main**: `loadPersistedChannels` reads Keychain keys + history in a detached
+  task, then installs sessions on `MainActor` — keeps the first frames smooth. `init` stays
+  metadata-only.
+
+- **PBKDF2 off the main thread**: `PasswordChannelSheet` derives keys in `Task.detached` with a
+  `deriving` spinner — never block main on the ~100k-iter KDF (still never per-keystroke).
+
+- **Local notifications, no entitlement**: inbound text fires a `UNNotificationRequest` (via
+  `NotificationManager`) when the message's channel isn't on screen (backgrounded, locked, or a
+  different page); on the open channel in the foreground it's just a haptic. `AppDelegate` owns
+  the `UNUserNotificationCenterDelegate` (`@UIApplicationDelegateAdaptor`); `willPresent` shows a
+  foreground banner unless `isOnScreen`; tapping deep-links via `openChannel`. `scenePhase` drives
+  `AppState.isForeground`. Authorization is requested in-context (first join/bootstrap), not at launch.
+
+- **Presence beacon backs off when alone**: `SessionManager` beacons every 10s only while peers
+  are connected; with no peers it drops to ~every 30s (`PresenceBeaconPolicy`). A peer connecting
+  triggers an immediate beacon, so back-off never delays first appearance. Roster sweep in
+  `AppState` is 12s (was 5s). Battery only — no messaging-reliability tradeoff.
 
 ## Device install (current state)
 

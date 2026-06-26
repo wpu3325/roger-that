@@ -25,6 +25,8 @@
 		80DF5BFB7005E3412A21A25C /* ActionButtonGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63986AD21802BA2B819B7789 /* ActionButtonGuideView.swift */; };
 		829A60D8709826E9A2A3029B /* ChannelQRView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5B6703F23C2CF3107B420F /* ChannelQRView.swift */; };
 		8477CBABC288830740CB7B8B /* Feedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DADADF42F560D6EFED3906 /* Feedback.swift */; };
+		8F09BB39B0DD5325CA741806 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1EF8DCF9A3BE1CB4A8BB37 /* NotificationManager.swift */; };
+		91E7B3D375D68E8442700E79 /* MessageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C791AEB014F0A42F380A5E47 /* MessageStore.swift */; };
 		B81AFC933AD4A89170D776F9 /* TogglePTTIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF900A7AB4DEDD8C53B03CA /* TogglePTTIntent.swift */; };
 		B8821C62D4CEEA17AD641DFC /* TextChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */; };
 		BBACF0110583E60B0B6423CA /* ChannelListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676878381D54073576FE43D4 /* ChannelListView.swift */; };
@@ -62,6 +64,8 @@
 		9227F3C9FD27B939B0888E70 /* OpusCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpusCodec.swift; sourceTree = "<group>"; };
 		9A75B316517ADEBF006D929D /* MultipeerVoiceLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultipeerVoiceLink.swift; sourceTree = "<group>"; };
 		A87EB121A0BE5874766FC3DA /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		C791AEB014F0A42F380A5E47 /* MessageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageStore.swift; sourceTree = "<group>"; };
+		CA1EF8DCF9A3BE1CB4A8BB37 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextChannelView.swift; sourceTree = "<group>"; };
 		EB81655C903DACB76EA12874 /* end_talk.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = end_talk.mp3; sourceTree = "<group>"; };
 		FDF900A7AB4DEDD8C53B03CA /* TogglePTTIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TogglePTTIntent.swift; sourceTree = "<group>"; };
@@ -144,6 +148,7 @@
 				CE5F7BEEB894BC55225C2CA3 /* Transports */,
 				44448B90CE328BF97D7CB41E /* UI */,
 				72B50E2A58CF744F53D18BED /* AppState.swift */,
+				CA1EF8DCF9A3BE1CB4A8BB37 /* NotificationManager.swift */,
 				046363F438373C9613F20A35 /* roger-that-icon.icon */,
 				188F0612146276232F9210C5 /* RogerThatApp.swift */,
 			);
@@ -188,6 +193,7 @@
 			isa = PBXGroup;
 			children = (
 				01B017F4DDDE91DA58A121CC /* ChannelStore.swift */,
+				C791AEB014F0A42F380A5E47 /* MessageStore.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -290,7 +296,9 @@
 				FCA74BF0EA9F1A945DC40816 /* CreateOrJoinView.swift in Sources */,
 				8477CBABC288830740CB7B8B /* Feedback.swift in Sources */,
 				6EDF014837EABFB177090E03 /* HelpView.swift in Sources */,
+				91E7B3D375D68E8442700E79 /* MessageStore.swift in Sources */,
 				730BF9C5EE175A839C036731 /* MultipeerVoiceLink.swift in Sources */,
+				8F09BB39B0DD5325CA741806 /* NotificationManager.swift in Sources */,
 				0D9B82F44C8E4C9D2BECE9CC /* OpusCodec.swift in Sources */,
 				D6B5427A8B500A61424C5339 /* PTTIntentBridge.swift in Sources */,
 				17AA9902208879EF059C44FA /* PushToTalkController.swift in Sources */,
