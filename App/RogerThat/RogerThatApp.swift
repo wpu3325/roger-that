@@ -29,9 +29,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     // Show a banner even while in the foreground — unless the message's channel is already
     // the one on screen (then it's redundant; the chat shows it live).
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                willPresent notification: UNNotification,
-                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    // `nonisolated` because UNUserNotificationCenterDelegate isn't MainActor-isolated while
+    // this class is (via UIApplicationDelegate); we hop to the main actor to read state.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let channelID = notification.request.content.userInfo["channelID"] as? String
         Task { @MainActor in
             completionHandler(NotificationManager.shared.isOnScreen(channelID) ? [] : [.banner, .sound])
@@ -39,9 +41,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     // Tapped a notification → open that channel.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                didReceive response: UNNotificationResponse,
-                                withCompletionHandler completionHandler: @escaping () -> Void) {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
         let channelID = response.notification.request.content.userInfo["channelID"] as? String
         Task { @MainActor in
             NotificationManager.shared.handleTap(channelID)
