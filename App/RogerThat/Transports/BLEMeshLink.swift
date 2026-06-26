@@ -34,10 +34,12 @@ final class BLEMeshLink: NSObject, Link, @unchecked Sendable {
             if let central = connectedCentrals[peer] {
                 if let char = rxChar { peripheralManager?.updateValue(data, for: char, onSubscribedCentrals: [central]) }
             } else if let p = connectedPeripherals[peer] {
-                if let tx = peripheralTXChars[peer] {
+                if let tx = peripheralTXChars[peer], p.state == .connected {
                     // Write WITH response: it reliably fires the peripheral's didReceiveWrite
                     // (write-without-response delivery is flaky across iOS versions). BLE only
                     // carries low-rate text/presence, so the per-write ACK cost is fine.
+                    // Guard on `.connected`: writing to a dropped peripheral logs "not a
+                    // valid peripheral" and never reaches anyone.
                     p.writeValue(data, for: tx, type: .withResponse)
                 }
             }
@@ -58,6 +60,7 @@ final class BLEMeshLink: NSObject, Link, @unchecked Sendable {
     }
 
     func stop() {
+        lock.withLock { rescanWork?.cancel(); rescanWork = nil }
         peripheralManager?.stopAdvertising()
         peripheralManager?.removeAllServices()
         centralManager?.stopScan()
@@ -76,6 +79,13 @@ final class BLEMeshLink: NSObject, Link, @unchecked Sendable {
     /// CoreBluetooth does NOT retain these for us; without this the connection
     /// is silently dropped before it completes.
     private var discoveredPeripherals: [UUID: CBPeripheral] = [:]
+    /// Last connect attempt per peripheral. Throttles reconnection so an unstable
+    /// iPhone↔iPhone link can't spin in a discover→connect→drop loop (which floods the
+    /// console with "not a valid peripheral" and drains the battery).
+    private var lastConnectAttempt: [UUID: Date] = [:]
+    private let reconnectCooldown: TimeInterval = 3
+    /// Debounced re-scan after a drop (so we don't restart the scan on every disconnect).
+    private var rescanWork: DispatchWorkItem?
 
     private var connectedCentrals: [PeerHandle: CBCentral] = [:]
     private var connectedPeripherals: [PeerHandle: CBPeripheral] = [:]
@@ -177,12 +187,19 @@ extension BLEMeshLink: CBCentralManagerDelegate {
         // advertisement packet, which previously blocked discovery entirely. Channel
         // isolation is enforced at the packet layer (channelIDHash + body encryption).
         let id = peripheral.identifier
-        let alreadyKnown: Bool = lock.withLock {
-            if discoveredPeripherals[id] != nil { return true }
-            discoveredPeripherals[id] = peripheral   // retain before connecting
-            return false
+        let shouldConnect: Bool = lock.withLock {
+            discoveredPeripherals[id] = peripheral   // retain (CoreBluetooth won't for us)
+            // Skip if we're already connecting/connected to it (peripheral.state covers
+            // both), or if we tried to connect very recently. Without this cooldown an
+            // unstable link re-discovers + reconnects in a tight loop.
+            guard peripheral.state == .disconnected else { return false }
+            if let last = lastConnectAttempt[id], Date().timeIntervalSince(last) < reconnectCooldown {
+                return false
+            }
+            lastConnectAttempt[id] = Date()
+            return true
         }
-        guard !alreadyKnown else { return }
+        guard shouldConnect else { return }
         peripheral.delegate = self
         c.connect(peripheral, options: nil)
     }
@@ -195,7 +212,7 @@ extension BLEMeshLink: CBCentralManagerDelegate {
     func centralManager(_ c: CBCentralManager, didFailToConnect peripheral: CBPeripheral,
                         error: Error?) {
         lock.withLock { discoveredPeripherals[peripheral.identifier] = nil }
-        c.scanForPeripherals(withServices: [serviceUUID], options: nil)
+        scheduleRescan(on: c)
     }
 
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral,
@@ -207,8 +224,28 @@ extension BLEMeshLink: CBCentralManagerDelegate {
             discoveredPeripherals[peripheral.identifier] = nil
         }
         emit(handle, .disconnected)
-        // Re-scan after disconnect.
-        c.scanForPeripherals(withServices: [serviceUUID], options: nil)
+        scheduleRescan(on: c)
+    }
+
+    /// Debounced re-scan. We keep one scan running for the session; after a drop we nudge it
+    /// once (after a short delay) instead of restarting it on every event — restarting the
+    /// scan per-drop is what turns an unstable link into a busy-loop. Re-issuing the scan
+    /// clears the duplicate filter so a still-present peer is re-reported and reconnected.
+    ///
+    /// The delay deliberately exceeds `reconnectCooldown`, so the re-reported peer is past
+    /// its cooldown and actually reconnects (otherwise the discovery is skipped and, with no
+    /// further rescan pending, the link could get stuck disconnected). This also caps a
+    /// flapping link to one reconnect attempt per cycle — bounded, not a busy-loop.
+    private func scheduleRescan(on c: CBCentralManager, delay: TimeInterval = 4) {
+        let work = DispatchWorkItem { [weak c] in
+            guard let c, c.state == .poweredOn else { return }
+            c.scanForPeripherals(withServices: [serviceUUID], options: nil)
+        }
+        lock.withLock {
+            rescanWork?.cancel()
+            rescanWork = work
+        }
+        bleQueue.asyncAfter(deadline: .now() + delay, execute: work)
     }
 }
 

@@ -109,6 +109,14 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   from `didDiscover` through connection, or ARC frees it and the connect silently aborts.
   See `discoveredPeripherals` in `BLEMeshLink`.
 
+- **Throttle BLE reconnects (no connect storm)**: an unstable iPhone↔iPhone GATT link
+  (`mtu = 23`, never negotiates) will busy-loop discover→connect→drop if you reconnect with
+  no dedup/backoff — the console floods with `is not a valid peripheral`. `BLEMeshLink` gates
+  `didDiscover` on `peripheral.state == .disconnected` + a per-device `reconnectCooldown` (3s),
+  replaces per-drop `scanForPeripherals` with a single **debounced** rescan, and only `writeValue`s
+  when `state == .connected`. The rescan delay (4s) must exceed the cooldown, or a flapped peer is
+  re-reported while still cooling down and never reconnects.
+
 - **Don't gate BLE connect on advertised local name**: the 31-byte advert often drops
   `CBAdvertisementDataLocalNameKey`. Connect to any peripheral with our serviceUUID; channel
   isolation is enforced at the packet layer (channelIDHash + body encryption).
