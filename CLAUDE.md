@@ -99,6 +99,9 @@ requires the full Xcode.app; it's not available from CLT-only installs.
 - **XCTest unavailable without Xcode.app**: this host has CLT only. Use `import Testing`
   for all test files. NOTE: as of CLT Swift 6.3.2 the `swift test` runner itself fails with
   `no such module 'Testing'` — verify Core with `swift build`; run the suite from Xcode.
+  To actually *run* a piece of Core logic on the CLT host, compile just the needed source
+  file(s) + a `main.swift` harness with `swiftc` into `$CLAUDE_JOB_DIR/tmp` and execute it
+  (top-level code must be in a file named `main.swift`). Add the matching `@Test` cases too.
 
 - **Roster/discovery = BLE presence beacons, not Multipeer**: members appear only when
   `.presence` packets flow over `BLEMeshLink`. `FloodRouter.send(presence:)` produces them;
@@ -308,6 +311,20 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   AppIntent + `RogerThatShortcuts` + `PTTIntentBridge`) was deleted. PTT is in-app only
   (hold + tap-to-toggle). Don't re-add an AppIntent unless you intend to bring back
   Action Button / Siri control.
+
+- **`@objc`/delegate methods on a `@MainActor` class**: a class conforming to `UIApplicationDelegate`
+  is MainActor-isolated, so implementing a *non-isolated* protocol on it (e.g.
+  `UNUserNotificationCenterDelegate`) needs those methods marked `nonisolated`. Inside, do NOT touch
+  the main actor around a non-Sendable completion handler — BOTH `Task { @MainActor in … }` AND
+  `MainActor.assumeIsolated { … }` count as "sending" it across isolation (`risks causing data
+  races`). Fix: read from a lock-protected snapshot and call the handler synchronously; do any
+  main-actor work in a separate hop that captures only Sendable values. See `NotificationManager`
+  (lock-backed `isForeground`/`activeID` mirror) + `AppDelegate`.
+
+- **App-target compile/concurrency errors surface only in Xcode**: the CLT host can't build the
+  app target, so Swift 6 actor-isolation diagnostics come back from the user's `⌘B`. Expect to
+  iterate on pasted errors; reason through isolation carefully before each round (each rebuild is
+  a slow human round-trip).
 
 ## Device install (current state)
 

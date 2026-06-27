@@ -56,16 +56,26 @@ The committed signing is tied to one developer account. To build under your own:
 > **Free Personal Team certs expire after 7 days.** When the app refuses to launch with
 > a signing error, just reconnect the phone and `⌘R` again to re-sign.
 
-## Step 4 — Grant permissions on first launch
+## Step 4 — Grant permissions during onboarding
 
-| Permission | When | Why |
+First launch shows a **welcome/onboarding flow** (`OnboardingView`) that explains and then
+requests each permission in turn, before you reach the create/join screen. Granting can be
+deferred ("Not now") and the OS will re-prompt the first time the feature is used.
+
+| Permission | Asked | Why |
 |---|---|---|
-| Bluetooth | On launch | BLE mesh (text + presence/roster) |
-| Local Network | On launch | Multipeer Connectivity (voice) |
-| Camera | First time you scan a join QR | QR channel-join scanner |
-| Microphone | On first PTT press | Voice capture |
+| Bluetooth | Onboarding | BLE mesh (text + presence/roster) — works fully offline |
+| Wi-Fi / Local Network | Onboarding | Multipeer Connectivity (voice) — peer-to-peer Wi-Fi |
+| Microphone | Onboarding | Voice capture on PTT |
+| Notifications | Onboarding | Message alerts when backgrounded / screen locked |
+| Camera | Onboarding | QR channel-join scanner |
 
-Without each one, the corresponding feature silently fails.
+Both **Bluetooth + Wi-Fi** = voice **and** text; **Bluetooth only** = text-only. The Local
+Network prompt has no decision callback, so onboarding surfaces it via a brief throwaway
+Multipeer advertiser/browser, then continues regardless (real use re-checks).
+
+> Onboarding only shows once (`@AppStorage("rogerthat.onboardingComplete")`). To re-test it,
+> delete the app and reinstall.
 
 ## Step 5 — Test with two devices
 
@@ -80,6 +90,25 @@ Without each one, the corresponding feature silently fails.
 > permission and are within Bluetooth/Wi-Fi P2P range. One-directional voice most often
 > means a missing Local Network grant on one side.
 
+## Step 6 — Priority checks for recent changes
+
+This batch of work is **App-layer / device-only** (BLE, Multipeer, audio, notifications,
+permissions) — none of it can be verified on the CLT build host, so it's reasoned-only until
+you run it. Focus a two-phone pass on:
+
+- **Onboarding (fresh install):** welcome animation plays; all five permission prompts fire in
+  order (esp. the **Wi-Fi/Local Network** one); call-sign step lands on create/join; it does
+  **not** reappear on relaunch.
+- **Bidirectional text + roster:** messages and "X joined" appear on **both** phones (not one
+  direction only); a small haptic fires on receive when the channel is open.
+- **Notifications:** with the app backgrounded / screen locked or on a different page, an
+  inbound message posts a banner with the text; tapping it opens that channel.
+- **Message history:** text survives quitting/reopening the app.
+- **Leave vs Delete:** "Leave" moves a channel to **Archived** (history kept, tap to rejoin);
+  "Delete" removes it and its history for good. Deletion should feel instant (no lag).
+- **BLE console health:** the old `is not a valid peripheral` flood should be gone (at most an
+  occasional reconnect every few seconds when a link actually drops).
+
 ---
 
 ## A note on the Simulator and unit tests
@@ -87,10 +116,12 @@ Without each one, the corresponding feature silently fails.
 BLE, Multipeer Connectivity, and audio I/O **do not function in the Simulator** — those
 APIs compile but are no-ops there. Real testing needs hardware.
 
-The pure-logic Core suite (44 tests) is the only part that runs without a device. On a
-**CLT-only host** `swift test` currently fails with `no such module 'Testing'` (Swift
-6.3.2 toolchain issue) — verify Core with `swift build` from the CLI, and run the actual
-suite from Xcode via **Product → Test (⌘U)** against any Simulator.
+The pure-logic Core suite (80 tests across 10 suites) is the only part that runs without a
+device. On a **CLT-only host** `swift test` currently fails with `no such module 'Testing'`
+(Swift 6.3.2 toolchain issue) — verify Core with `swift build` from the CLI, and run the
+actual suite from Xcode via **Product → Test (⌘U)** against any Simulator. To run a single
+piece of Core logic without Xcode, compile the source file(s) + a `main.swift` harness with
+`swiftc` and execute it (see CLAUDE.md → Testing).
 
 ---
 
