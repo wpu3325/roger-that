@@ -6,6 +6,7 @@ import RogerThatCore
 struct TalkButton: View {
     @EnvironmentObject var appState: AppState
     @AppStorage("rogerthat.pttToggleMode") private var isToggleMode = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isTalking: Bool {
         if case .talkingLocal = appState.floorState { return true }
@@ -54,8 +55,8 @@ struct TalkButton: View {
                         .foregroundStyle(.white)
                 }
             }
-            .scaleEffect(isTalking ? 1.1 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isTalking)
+            .scaleEffect(isTalking && !reduceMotion ? 1.1 : 1.0)
+            .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.6), value: isTalking)
     }
 
     // MARK: - Press-and-hold

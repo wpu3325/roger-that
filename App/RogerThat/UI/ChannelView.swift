@@ -58,6 +58,7 @@ struct ChannelView: View {
                     } label: {
                         Image(systemName: "qrcode")
                     }
+                    .accessibilityLabel("Share invite")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
@@ -82,6 +83,7 @@ struct ChannelView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
+                    .accessibilityLabel("Channel options")
                 }
             }
             .alert("Rename channel", isPresented: $showRename) {

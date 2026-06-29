@@ -29,6 +29,7 @@ struct CreateOrJoinView: View {
                             .font(.title2)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityLabel("Help")
                 }
                 .padding(.horizontal)
 
@@ -103,6 +104,7 @@ struct CreateOrJoinView: View {
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Edit call sign")
             }
             .padding(.horizontal)
         }
@@ -134,8 +136,7 @@ struct CreateOrJoinView: View {
             Label("Create Channel", systemImage: "antenna.radiowaves.left.and.right")
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .dsPrimaryButton()
         .padding(.horizontal)
     }
 
@@ -171,8 +172,7 @@ struct CreateOrJoinView: View {
             Button("Join This Channel") {
                 appState.join(channel: channel, displayName: displayName)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .dsPrimaryButton()
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -192,8 +192,7 @@ struct CreateOrJoinView: View {
             Label("Join Channel", systemImage: "qrcode.viewfinder")
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
+        .dsSecondaryButton()
         .padding(.horizontal)
     }
 
@@ -209,8 +208,7 @@ struct CreateOrJoinView: View {
             Label("Channel with Password", systemImage: "lock.fill")
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
+        .dsSecondaryButton()
         .padding(.horizontal)
     }
 

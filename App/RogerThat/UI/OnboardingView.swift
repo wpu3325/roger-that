@@ -8,6 +8,7 @@ struct OnboardingView: View {
     @AppStorage("rogerthat.callSign") private var callSign = ""
 
     @StateObject private var primer = PermissionPrimer()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step = 0
     @State private var working = false
     @State private var titleShown = false
@@ -83,7 +84,7 @@ struct OnboardingView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: step)
+        .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.85), value: step)
     }
 
     // MARK: - Content router
@@ -124,8 +125,12 @@ struct OnboardingView: View {
                 .opacity(titleShown ? 1 : 0)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
+            if reduceMotion {
                 titleShown = true
+            } else {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
+                    titleShown = true
+                }
             }
         }
     }
@@ -270,6 +275,8 @@ struct OnboardingView: View {
                     .frame(width: i == step ? 18 : 7, height: 7)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Step \(step + 1) of \(lastStep + 1)")
     }
 
     // MARK: - Navigation

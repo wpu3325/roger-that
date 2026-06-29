@@ -21,6 +21,7 @@ struct VoiceWaveformView: View {
             }
         }
         .animation(.spring(response: 0.18, dampingFraction: 0.6), value: level)
+        .accessibilityHidden(true)   // decorative; the floor banner text conveys the state
     }
 
     private func height(for index: Int) -> CGFloat {
