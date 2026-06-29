@@ -339,6 +339,17 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   / `onSessionFailed` → `.microphoneDenied` (banner offers Open Settings). Don't widen the `Link`
   protocol for status — voice uses a separate `setStatusHandler` (BLE doesn't need it).
 
+- **Multipeer: competing-session vs deadlock — keep strict single-inviter + retry, NOT mutual
+  invites**: with ONE shared `MCSession`, if both peers `invitePeer` each other they form two
+  crossing connections, one of which drops to `.notConnected` right after `.connected` — a flap
+  that never stabilizes (the "giving up for participant" spam). So only the larger-`displayName`
+  peer invites. But a strict single invite *deadlocks* if it's missed/declined/timed-out (the
+  original demo bug). The fix is retry, not mutual invites: re-invite with backoff
+  (`MultipeerRetryPolicy`), and let the non-inviter step in only as a **late** fallback (~20s,
+  and never while already `.connecting`) so the competing-session window stays tiny. Rule of
+  thumb: determinism (one inviter) for stability + retry for liveness; never make both sides
+  invite freely.
+
 - **Design system (`DS`)**: use `DS.Spacing/Radius/Palette/Typography`, `.dsPrimaryButton()/
   .dsSecondaryButton()/.dsCard()`, `DSEmptyState`, and `.dsToast(message:)` instead of ad-hoc
   values. `DS.Palette.brand` is the single accent (system blue); dark mode stays forced. The
