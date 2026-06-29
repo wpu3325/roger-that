@@ -39,11 +39,13 @@ struct ChannelQRView: View {
                 Button {
                     UIPasteboard.general.string = code
                     copied = true
+                    Haptics.copied()
                 } label: {
                     Label(copied ? "Copied" : "Copy invite code",
                           systemImage: copied ? "checkmark" : "doc.on.doc")
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel(copied ? "Invite code copied" : "Copy invite code")
 
                 Text("No camera? Share the invite code and have them paste it under Join Channel.")
                     .font(.caption)

@@ -13,6 +13,8 @@ struct ChannelView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                VoiceStatusBanner()
+
                 FloorBanner()
                     .padding(.horizontal)
                     .padding(.top, 8)
@@ -103,6 +105,72 @@ struct ChannelView: View {
                 }
             }
         }
+    }
+}
+
+/// Surfaces the voice link's connection state so failures are never silent. Hidden once
+/// voice is connected; otherwise shows progress, an informational "no one here", or an
+/// actionable permission warning with an Open Settings shortcut.
+private struct VoiceStatusBanner: View {
+    @EnvironmentObject var appState: AppState
+
+    var body: some View {
+        switch appState.voiceStatus {
+        case .connected:
+            EmptyView()
+        case .connecting:
+            row(icon: nil, text: "Connecting to nearby devices…",
+                tint: .secondary, showSpinner: true)
+        case .noPeers:
+            row(icon: "antenna.radiowaves.left.and.right", text: "No one else here yet",
+                tint: .secondary, showSpinner: false)
+        case .unavailable(let reason):
+            unavailable(reason)
+        }
+    }
+
+    private func row(icon: String?, text: String, tint: Color, showSpinner: Bool) -> some View {
+        HStack(spacing: DS.Spacing.sm) {
+            if showSpinner { ProgressView().controlSize(.small) }
+            if let icon { Image(systemName: icon) }
+            Text(text).font(.caption)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
+    }
+
+    @ViewBuilder
+    private func unavailable(_ reason: VoiceUnavailableReason) -> some View {
+        let message: String = {
+            switch reason {
+            case .localNetworkDenied: return "Voice needs Local Network access to reach nearby phones."
+            case .microphoneDenied:   return "Microphone access is off — others won't hear you."
+            }
+        }()
+        HStack(spacing: DS.Spacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(message).font(.caption)
+            Spacer(minLength: 0)
+            Button("Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(DS.Palette.warning)
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DS.Palette.warning.opacity(0.12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(message)
+        .accessibilityHint("Opens Settings to grant access")
     }
 }
 

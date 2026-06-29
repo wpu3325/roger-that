@@ -58,6 +58,15 @@ struct TextChannelView: View {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
+                .overlay {
+                    if appState.messages.isEmpty {
+                        DSEmptyState(
+                            icon: "bubble.left.and.bubble.right",
+                            title: "No messages yet",
+                            message: "Say hello — messages relay over Bluetooth to everyone on the channel."
+                        )
+                    }
+                }
             }
 
             Divider()
@@ -77,8 +86,10 @@ struct TextChannelView: View {
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
+                        .frame(minWidth: DS.Layout.minTouchTarget, minHeight: DS.Layout.minTouchTarget)
                 }
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityLabel("Send message")
             }
             .padding(.horizontal)
             .padding(.vertical, 8)

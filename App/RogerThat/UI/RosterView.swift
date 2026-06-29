@@ -27,10 +27,10 @@ struct RosterView: View {
         }
         .overlay {
             if appState.members.isEmpty {
-                ContentUnavailableView(
-                    "No members nearby",
-                    systemImage: "antenna.radiowaves.left.and.right.slash",
-                    description: Text("Others will appear when they join the channel in range.")
+                DSEmptyState(
+                    icon: "antenna.radiowaves.left.and.right.slash",
+                    title: "No one nearby yet",
+                    message: "Members appear here when they join this channel in range. Pull down to refresh."
                 )
             }
         }

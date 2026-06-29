@@ -48,4 +48,22 @@ enum Haptics {
         impact.impactOccurred()
         impact.prepare()   // re-arm for the next one (lower latency)
     }
+
+    private static let notify: UINotificationFeedbackGenerator = {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        return generator
+    }()
+
+    /// A positive confirmation (e.g. a successful action completed).
+    static func success() {
+        notify.notificationOccurred(.success)
+        notify.prepare()
+    }
+
+    /// Crisp tap confirming a copy-to-clipboard action.
+    static func copied() {
+        impact.impactOccurred()
+        impact.prepare()
+    }
 }

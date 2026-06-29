@@ -23,6 +23,9 @@ final class AppState: ObservableObject {
     @Published var floorState: FloorState = .idle
     /// Normalized 0...1 audio level of whoever currently holds the floor (drives waveform).
     @Published var voiceLevel: Float = 0
+    /// Live state of the active channel's voice link, so the UI can show connecting / connected
+    /// / no-peers / unavailable instead of failing silently.
+    @Published var voiceStatus: VoiceLinkStatus = .connecting
 
     // MARK: - Multi-channel state
 
@@ -303,13 +306,21 @@ final class AppState: ObservableObject {
         let crypto = ChannelCrypto(key: channel.key)
         voiceCrypto = crypto
 
+        voiceStatus = .connecting
+
         let voice = MultipeerVoiceLink(channelIDHash: channel.channelIDHash, localID: localID)
         voice.setHandlers(
             onReceive: { [weak self] data, _ in Task { @MainActor in self?.handleVoicePacket(data) } },
-            onPeerEvent: { _, _ in }
+            onPeerEvent: { _, _ in }   // status is driven by setStatusHandler below
         )
+        voice.setStatusHandler { [weak self] status in
+            Task { @MainActor in self?.applyVoiceStatus(status) }
+        }
 
         let engine = AudioEngineIO()
+        engine.onSessionFailed = { [weak self] in
+            Task { @MainActor in self?.voiceStatus = .unavailable(.microphoneDenied) }
+        }
         let ptt = PushToTalkController(
             localID: localID,
             channelIDHash: channel.channelIDHash,
@@ -358,6 +369,15 @@ final class AppState: ObservableObject {
         voiceLink = nil
         audioEngine = nil
         voiceCrypto = nil
+        voiceStatus = .connecting
+    }
+
+    /// Apply a voice-link status, but let a denied microphone take precedence — a denied mic
+    /// still "connects" peers, yet you'd hear nothing useful, so the user must fix it.
+    private func applyVoiceStatus(_ status: VoiceLinkStatus) {
+        if case .unavailable = status { voiceStatus = status; return }
+        if AudioEngineIO.microphoneDenied { voiceStatus = .unavailable(.microphoneDenied); return }
+        voiceStatus = status
     }
 
     // MARK: - Incoming text + roster (per channel)

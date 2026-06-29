@@ -35,6 +35,9 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 | `Sources/RogerThatCore/Channel/JoinCode.swift` | URL-safe base64 channel join payload |
 | `Sources/RogerThatCore/Transport/InMemoryLink.swift` | In-process link used by all unit tests |
 | `Sources/RogerThatCore/Transport/LinkHub.swift` | Fans one shared Link out to N per-channel ports (multi-channel) |
+| `Sources/RogerThatCore/Transport/MultipeerRetryPolicy.swift` | Pure backoff/tiebreak policy for voice invite retries (unit-tested) |
+| `Sources/RogerThatCore/Transport/VoiceLinkStatus.swift` | Voice link status enum + pure `evaluate` (unit-tested) |
+| `App/RogerThat/UI/DesignSystem.swift` | Design tokens (spacing/radius/color/type) + button/card/empty-state/toast |
 | `Sources/RogerThatCore/Channel/ChannelMetadata.swift` | Codable persisted record of a joined channel |
 | `Sources/RogerThatCore/Protocol/VoiceBody.swift` | Seal/open voice frame bodies with the channel key |
 | `Sources/RogerThatCore/Crypto/PasswordKey.swift` | PBKDF2 channel key from name+password; verification fingerprint |
@@ -55,10 +58,10 @@ CoreBluetooth, MultipeerConnectivity, AVFoundation, AppIntents, SwiftUI.
 
 ## Testing
 
-80 unit tests across 10 suites — all in `Tests/RogerThatCoreTests/`:
+92 unit tests across 12 suites — all in `Tests/RogerThatCoreTests/`:
 
 ```bash
-swift test               # run all 80 tests
+swift test               # run all 92 tests
 swift test --filter PacketCodec   # run one suite
 ```
 
@@ -325,6 +328,21 @@ requires the full Xcode.app; it's not available from CLT-only installs.
   app target, so Swift 6 actor-isolation diagnostics come back from the user's `⌘B`. Expect to
   iterate on pasted errors; reason through isolation carefully before each round (each rebuild is
   a slow human round-trip).
+
+- **Voice connection is retry-driven + visible**: `MultipeerVoiceLink` keeps the strict
+  "larger displayName invites" tiebreak (avoids competing sessions) but adds a repeating retry
+  timer that re-invites discovered-but-unconnected peers with backoff (`MultipeerRetryPolicy`,
+  Core, unit-tested), plus a late non-inviter fallback — so a single missed/timed-out invite no
+  longer wedges voice forever. Status flows `MultipeerVoiceLink.onStatusChange` → `AppState.voiceStatus`
+  (@Published) → `ChannelView`'s `VoiceStatusBanner`. Permission denial is surfaced, not silent:
+  `didNotStart{Advertising,Browsing}` → `.localNetworkDenied`; `AudioEngineIO.microphoneDenied`
+  / `onSessionFailed` → `.microphoneDenied` (banner offers Open Settings). Don't widen the `Link`
+  protocol for status — voice uses a separate `setStatusHandler` (BLE doesn't need it).
+
+- **Design system (`DS`)**: use `DS.Spacing/Radius/Palette/Typography`, `.dsPrimaryButton()/
+  .dsSecondaryButton()/.dsCard()`, `DSEmptyState`, and `.dsToast(message:)` instead of ad-hoc
+  values. `DS.Palette.brand` is the single accent (system blue); dark mode stays forced. The
+  toast is `allowsHitTesting(false)` so it never blocks the TalkButton.
 
 ## Device install (current state)
 

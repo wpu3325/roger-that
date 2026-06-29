@@ -27,6 +27,7 @@
 		8477CBABC288830740CB7B8B /* Feedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DADADF42F560D6EFED3906 /* Feedback.swift */; };
 		8F09BB39B0DD5325CA741806 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1EF8DCF9A3BE1CB4A8BB37 /* NotificationManager.swift */; };
 		91E7B3D375D68E8442700E79 /* MessageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C791AEB014F0A42F380A5E47 /* MessageStore.swift */; };
+		A5275ED6E938E0DCDD0769BC /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 295B75F5BD94766055F7F0F3 /* DesignSystem.swift */; };
 		B8821C62D4CEEA17AD641DFC /* TextChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67E4A2BF15070ADCAC90A96 /* TextChannelView.swift */; };
 		BBACF0110583E60B0B6423CA /* ChannelListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676878381D54073576FE43D4 /* ChannelListView.swift */; };
 		C72E7B400497BCD335509353 /* ChannelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013AB27B3698C2DA444C657C /* ChannelView.swift */; };
@@ -45,6 +46,7 @@
 		188F0612146276232F9210C5 /* RogerThatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RogerThatApp.swift; sourceTree = "<group>"; };
 		1BA877C05548B51168F42FE8 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		270DDB5F7C8182E1ED1536C9 /* TalkButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkButton.swift; sourceTree = "<group>"; };
+		295B75F5BD94766055F7F0F3 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		2E9D94B4A617F0E67883293C /* VoiceWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceWaveformView.swift; sourceTree = "<group>"; };
 		396888541F0D5FAE6B139058 /* RogerThat.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RogerThat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateOrJoinView.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				8C5B6703F23C2CF3107B420F /* ChannelQRView.swift */,
 				013AB27B3698C2DA444C657C /* ChannelView.swift */,
 				3B4D68E8E81D573872F36C45 /* CreateOrJoinView.swift */,
+				295B75F5BD94766055F7F0F3 /* DesignSystem.swift */,
 				667DA1335C389BF6A179759C /* HelpView.swift */,
 				1BA877C05548B51168F42FE8 /* OnboardingView.swift */,
 				A87EB121A0BE5874766FC3DA /* QRScannerView.swift */,
@@ -290,6 +293,7 @@
 				33AF20D835A3DCC1876E7AAF /* ChannelStore.swift in Sources */,
 				C72E7B400497BCD335509353 /* ChannelView.swift in Sources */,
 				FCA74BF0EA9F1A945DC40816 /* CreateOrJoinView.swift in Sources */,
+				A5275ED6E938E0DCDD0769BC /* DesignSystem.swift in Sources */,
 				8477CBABC288830740CB7B8B /* Feedback.swift in Sources */,
 				6EDF014837EABFB177090E03 /* HelpView.swift in Sources */,
 				91E7B3D375D68E8442700E79 /* MessageStore.swift in Sources */,

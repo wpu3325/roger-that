@@ -13,6 +13,7 @@ struct CreateOrJoinView: View {
     @State private var createdChannel: Channel?
     @State private var createdCode: String?
     @State private var showHelp = false
+    @State private var copyToast: String?
     @FocusState private var callSignFocused: Bool
 
     var body: some View {
@@ -61,6 +62,7 @@ struct CreateOrJoinView: View {
             .sheet(isPresented: $showHelp) {
                 HelpView()
             }
+            .dsToast(message: $copyToast)
         }
     }
 
@@ -157,11 +159,14 @@ struct CreateOrJoinView: View {
 
             Button {
                 UIPasteboard.general.string = code
+                Haptics.copied()
+                copyToast = "Invite code copied"
             } label: {
                 Label("Copy invite code", systemImage: "doc.on.doc")
             }
             .buttonStyle(.bordered)
             .font(.subheadline)
+            .accessibilityLabel("Copy invite code")
 
             Button("Join This Channel") {
                 appState.join(channel: channel, displayName: displayName)

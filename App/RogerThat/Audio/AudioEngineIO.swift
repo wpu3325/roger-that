@@ -35,6 +35,12 @@ private final class FedFlag: @unchecked Sendable {
 /// thread-safe.
 final class AudioEngineIO: @unchecked Sendable {
 
+    /// Whether the user has explicitly denied microphone access (so the UI can prompt them to
+    /// fix it in Settings — a denied mic activates the session but captures only silence).
+    static var microphoneDenied: Bool {
+        AVAudioApplication.shared.recordPermission == .denied
+    }
+
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
     private let codec: any RogerThatCore.AudioCodec = RawPCMCodec()
@@ -50,6 +56,9 @@ final class AudioEngineIO: @unchecked Sendable {
     var onInputLevel: ((Float) -> Void)?
     /// Normalized 0...1 level of incoming audio (drives the remote waveform).
     var onOutputLevel: ((Float) -> Void)?
+    /// Fired when the audio session can't be activated (mic denied, or another app holds it),
+    /// so the UI can surface it instead of silently playing nothing.
+    var onSessionFailed: (() -> Void)?
 
     private var captureConverter: AVAudioConverter?
     /// Leftover converted PCM that didn't fill a whole 20 ms frame; carried into the next
@@ -77,6 +86,7 @@ final class AudioEngineIO: @unchecked Sendable {
             // the next playEncoded/startCapture retries, and the interruption/route observers
             // recover once the system frees the session.
             sessionActive = false
+            onSessionFailed?()
         }
     }
 
