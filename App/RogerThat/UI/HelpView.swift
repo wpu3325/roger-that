@@ -9,7 +9,7 @@ struct HelpView: View {
                 Section {
                     HelpRow(
                         icon: "antenna.radiowaves.left.and.right",
-                        iconColor: .accentColor,
+                        iconColor: DS.Palette.brand,
                         title: "What is Roger That?",
                         detail: "A walkie-talkie that works without cell signal. It uses Bluetooth and peer-to-peer Wi-Fi to carry voice and text directly between phones — no internet, no server."
                     )
@@ -112,18 +112,18 @@ private struct HelpRow: View {
     let detail: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: DS.Spacing.lg) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: DS.Radius.sm, style: .continuous)
                     .fill(iconColor.opacity(0.15))
                     .frame(width: 36, height: 36)
                 Image(systemName: icon)
                     .foregroundStyle(iconColor)
                     .font(.system(size: 16))
             }
-            .padding(.top, 2)
+            .padding(.top, DS.Spacing.xxs)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text(title)
                     .font(.subheadline.bold())
                 Text(detail)
@@ -131,6 +131,6 @@ private struct HelpRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, DS.Spacing.xs)
     }
 }

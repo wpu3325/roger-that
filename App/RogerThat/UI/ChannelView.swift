@@ -17,7 +17,7 @@ struct ChannelView: View {
 
                 FloorBanner()
                     .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.top, DS.Spacing.sm)
 
                 Divider()
 
@@ -32,7 +32,7 @@ struct ChannelView: View {
                 if !keyboardVisible {
                     TalkButton()
                         .padding(.horizontal)
-                        .padding(.bottom, 32)
+                        .padding(.bottom, DS.Spacing.xxl)
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -188,19 +188,19 @@ private struct FloorBanner: View {
                     .foregroundStyle(.secondary)
                     .font(.caption)
             case .talkingLocal:
-                HStack(spacing: 8) {
-                    VoiceWaveformView(level: CGFloat(appState.voiceLevel), color: .green,
+                HStack(spacing: DS.Spacing.sm) {
+                    VoiceWaveformView(level: CGFloat(appState.voiceLevel), color: DS.Palette.talkingLocal,
                                       barCount: 4, maxBarHeight: 18, barWidth: 3)
                     Text("You are talking")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(DS.Palette.talkingLocal)
                         .font(.subheadline.bold())
                 }
             case .talkingRemote(_, let name):
-                HStack(spacing: 8) {
-                    VoiceWaveformView(level: CGFloat(appState.voiceLevel), color: .orange,
+                HStack(spacing: DS.Spacing.sm) {
+                    VoiceWaveformView(level: CGFloat(appState.voiceLevel), color: DS.Palette.talkingRemote,
                                       barCount: 4, maxBarHeight: 18, barWidth: 3)
                     Text("\(name) is talking")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(DS.Palette.talkingRemote)
                         .font(.subheadline.bold())
                 }
             }

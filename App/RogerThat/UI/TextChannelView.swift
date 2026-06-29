@@ -49,7 +49,7 @@ struct TextChannelView: View {
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, DS.Spacing.sm)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .simultaneousGesture(timestampRevealGesture)
@@ -71,7 +71,7 @@ struct TextChannelView: View {
 
             Divider()
 
-            HStack(spacing: 8) {
+            HStack(spacing: DS.Spacing.sm) {
                 TextField("Message", text: $draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...4)
@@ -92,8 +92,8 @@ struct TextChannelView: View {
                 .accessibilityLabel("Send message")
             }
             .padding(.horizontal)
-            .padding(.vertical, 8)
-            .background(Color(.systemBackground))
+            .padding(.vertical, DS.Spacing.sm)
+            .background(DS.Palette.surface)
         }
     }
 
@@ -104,20 +104,20 @@ struct TextChannelView: View {
         VStack(spacing: 0) {
             if showsTimeSeparator(at: index) {
                 TimeSeparator(date: msg.timestamp)
-                    .padding(.top, index == 0 ? 0 : 12)
-                    .padding(.bottom, 6)
+                    .padding(.top, index == 0 ? 0 : DS.Spacing.md)
+                    .padding(.bottom, DS.Spacing.xs)
             }
 
             switch msg.kind {
             case .system:
                 SystemNotice(text: msg.text)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, DS.Spacing.xs)
             case .message:
                 MessageRow(message: msg,
                            isFirstOfRun: isFirstOfRun(at: index),
                            reveal: reveal,
                            revealWidth: revealWidth)
-                    .padding(.top, isFirstOfRun(at: index) ? 6 : 1)
+                    .padding(.top, isFirstOfRun(at: index) ? DS.Spacing.sm : DS.Spacing.xxs)
             }
         }
     }
@@ -197,19 +197,19 @@ private struct MessageRow: View {
         HStack {
             if message.isLocal { Spacer(minLength: 48) }
 
-            VStack(alignment: message.isLocal ? .trailing : .leading, spacing: 2) {
+            VStack(alignment: message.isLocal ? .trailing : .leading, spacing: DS.Spacing.xxs) {
                 if !message.isLocal && isFirstOfRun {
                     Text(message.senderName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, DS.Spacing.sm)
                 }
                 Text(message.text)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(message.isLocal ? Color.accentColor : Color(.secondarySystemBackground))
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .background(message.isLocal ? DS.Palette.brand : DS.Palette.surfaceSecondary)
                     .foregroundStyle(message.isLocal ? .white : .primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg, style: .continuous))
             }
 
             if !message.isLocal { Spacer(minLength: 48) }

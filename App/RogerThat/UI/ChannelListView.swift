@@ -107,12 +107,12 @@ struct ChannelListView: View {
     }
 
     private func row(for meta: ChannelMetadata) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DS.Spacing.md) {
             Image(systemName: meta.kind == .password ? "lock.fill" : "antenna.radiowaves.left.and.right")
                 .foregroundStyle(.secondary)
                 .frame(width: 24)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(meta.name).font(.body)
                 Text(summary(meta)).font(.caption).foregroundStyle(.secondary)
             }
@@ -124,13 +124,13 @@ struct ChannelListView: View {
                 Text("\(unread)")
                     .font(.caption2.bold())
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.accentColor))
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(Capsule().fill(DS.Palette.brand))
             }
             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, DS.Spacing.xs)
         .contentShape(Rectangle())
     }
 

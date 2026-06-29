@@ -63,13 +63,13 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(.systemBackground), Color(.secondarySystemBackground)],
+            LinearGradient(colors: [DS.Palette.surface, DS.Palette.surfaceSecondary],
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 progressDots
-                    .padding(.top, 8)
+                    .padding(.top, DS.Spacing.sm)
 
                 Spacer(minLength: 0)
 
@@ -78,7 +78,7 @@ struct OnboardingView: View {
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)))
-                    .padding(.horizontal, 28)
+                    .padding(.horizontal, DS.Spacing.xxl)
 
                 Spacer(minLength: 0)
             }
@@ -102,7 +102,7 @@ struct OnboardingView: View {
     // MARK: - Pages
 
     private var welcomePage: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: DS.Spacing.xl) {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 86, weight: .semibold))
                 .foregroundStyle(.tint)
@@ -110,7 +110,7 @@ struct OnboardingView: View {
                 .scaleEffect(titleShown ? 1 : 0.6)
                 .opacity(titleShown ? 1 : 0)
 
-            VStack(spacing: 10) {
+            VStack(spacing: DS.Spacing.md) {
                 Text("Welcome to")
                     .font(.title3.weight(.medium))
                     .foregroundStyle(.secondary)
@@ -118,10 +118,10 @@ struct OnboardingView: View {
                     .font(.system(size: 40, weight: .bold, design: .rounded))
             }
             .opacity(titleShown ? 1 : 0)
-            .offset(y: titleShown ? 0 : 16)
+            .offset(y: titleShown ? 0 : DS.Spacing.lg)
 
             primaryButton("Get Started") { advance() }
-                .padding(.top, 12)
+                .padding(.top, DS.Spacing.md)
                 .opacity(titleShown ? 1 : 0)
         }
         .onAppear {
@@ -136,12 +136,12 @@ struct OnboardingView: View {
     }
 
     private var aboutPage: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: DS.Spacing.xxl) {
             Image(systemName: "iphone.radiowaves.left.and.right")
                 .font(.system(size: 64))
                 .foregroundStyle(.tint)
 
-            VStack(spacing: 12) {
+            VStack(spacing: DS.Spacing.md) {
                 Text("Your offline walkie-talkie")
                     .font(.title.bold())
                     .multilineTextAlignment(.center)
@@ -151,19 +151,19 @@ struct OnboardingView: View {
                     .multilineTextAlignment(.center)
             }
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 featureBullet("antenna.radiowaves.left.and.right", "Works completely offline")
                 featureBullet("waveform", "Push-to-talk voice + group text")
                 featureBullet("lock.shield.fill", "Encrypted, no servers")
             }
-            .padding(.top, 4)
+            .padding(.top, DS.Spacing.xs)
 
             primaryButton("Continue") { advance() }
         }
     }
 
     private func permissionPage(_ info: PermissionInfo) -> some View {
-        VStack(spacing: 24) {
+        VStack(spacing: DS.Spacing.xl) {
             ZStack {
                 Circle().fill(info.tint.opacity(0.15)).frame(width: 96, height: 96)
                 Image(systemName: info.icon)
@@ -184,10 +184,10 @@ struct OnboardingView: View {
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, DS.Spacing.xs)
             }
 
-            VStack(spacing: 10) {
+            VStack(spacing: DS.Spacing.md) {
                 primaryButton(info.allowLabel, loading: working) {
                     Task {
                         working = true
@@ -201,20 +201,20 @@ struct OnboardingView: View {
                     .foregroundStyle(.secondary)
                     .disabled(working)
             }
-            .padding(.top, 8)
+            .padding(.top, DS.Spacing.sm)
         }
     }
 
     private var callSignPage: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: DS.Spacing.xl) {
             ZStack {
-                Circle().fill(Color.accentColor.opacity(0.15)).frame(width: 96, height: 96)
+                Circle().fill(DS.Palette.brand.opacity(0.15)).frame(width: 96, height: 96)
                 Image(systemName: "person.fill")
                     .font(.system(size: 40))
                     .foregroundStyle(.tint)
             }
 
-            VStack(spacing: 10) {
+            VStack(spacing: DS.Spacing.md) {
                 Text("Pick your call sign")
                     .font(.title.bold())
                 Text("This is how others see you on the channel. You can change it anytime.")
@@ -243,7 +243,7 @@ struct OnboardingView: View {
     // MARK: - Building blocks
 
     private func featureBullet(_ icon: String, _ text: String) -> some View {
-        HStack(spacing: 14) {
+        HStack(spacing: DS.Spacing.lg) {
             Image(systemName: icon)
                 .font(.system(size: 18))
                 .foregroundStyle(.tint)
@@ -260,18 +260,16 @@ struct OnboardingView: View {
                 Text(title).opacity(loading ? 0 : 1)
                 if loading { ProgressView().tint(.white) }
             }
-            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .dsPrimaryButton()
         .disabled(loading)
     }
 
     private var progressDots: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: DS.Spacing.sm) {
             ForEach(0...lastStep, id: \.self) { i in
                 Capsule()
-                    .fill(i == step ? Color.accentColor : Color.secondary.opacity(0.3))
+                    .fill(i == step ? DS.Palette.brand : Color.secondary.opacity(0.3))
                     .frame(width: i == step ? 18 : 7, height: 7)
             }
         }

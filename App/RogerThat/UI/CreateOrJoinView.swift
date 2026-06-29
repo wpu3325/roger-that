@@ -18,7 +18,7 @@ struct CreateOrJoinView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
+            VStack(spacing: DS.Spacing.xxl) {
                 HStack {
                     Spacer()
                     Text("Roger That")
@@ -36,7 +36,7 @@ struct CreateOrJoinView: View {
                 callSignField
 
                 if let err = errorMessage {
-                    Text(err).foregroundStyle(.red).font(.caption)
+                    Text(err).foregroundStyle(DS.Palette.danger).font(.caption)
                 }
 
                 if let ch = createdChannel, let code = createdCode {
@@ -72,7 +72,7 @@ struct CreateOrJoinView: View {
     @ViewBuilder
     private var callSignField: some View {
         if displayName.isEmpty || isEditingCallSign {
-            HStack(spacing: 8) {
+            HStack(spacing: DS.Spacing.sm) {
                 TextField("Call sign", text: $callSignDraft)
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
@@ -91,7 +91,7 @@ struct CreateOrJoinView: View {
             }
             .padding(.horizontal)
         } else {
-            HStack(spacing: 10) {
+            HStack(spacing: DS.Spacing.md) {
                 Text(displayName)
                     .font(.title3.bold())
                     .foregroundStyle(.primary)
@@ -141,7 +141,7 @@ struct CreateOrJoinView: View {
     }
 
     private func createdChannelCard(_ channel: Channel, code: String) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: DS.Spacing.lg) {
             Text("Show this QR to invite others")
                 .font(.headline)
 
@@ -175,8 +175,8 @@ struct CreateOrJoinView: View {
             .dsPrimaryButton()
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .background(DS.Palette.surfaceSecondary)
+        .cornerRadius(DS.Radius.md)
         .padding(.horizontal)
     }
 
@@ -245,13 +245,13 @@ private struct JoinSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
+            VStack(spacing: DS.Spacing.xl) {
                 Button {
                     showScanner = true
                 } label: {
                     Label("Scan QR Code", systemImage: "qrcode.viewfinder")
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, DS.Spacing.sm)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -279,7 +279,7 @@ private struct JoinSheet: View {
                     .padding(.horizontal)
 
                 if let err = errorMessage {
-                    Text(err).foregroundStyle(.red).font(.caption)
+                    Text(err).foregroundStyle(DS.Palette.danger).font(.caption)
                 }
 
                 Button("Join") {
@@ -349,7 +349,7 @@ private struct PasswordChannelSheet: View {
                         .disabled(!canEnter)
 
                     if let code = verificationCode {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                             Text(code)
                                 .font(.system(.title3, design: .monospaced).bold())
                                 .tracking(3)

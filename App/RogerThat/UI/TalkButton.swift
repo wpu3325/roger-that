@@ -20,10 +20,10 @@ struct TalkButton: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: DS.Spacing.md) {
             Toggle("Tap-to-toggle mode", isOn: $isToggleMode)
                 .font(.caption)
-                .tint(.accentColor)
+                .tint(DS.Palette.brand)
 
             if isToggleMode {
                 tapToggleButton
@@ -41,7 +41,7 @@ struct TalkButton: View {
 
     private func buttonFace(size: CGFloat = 120) -> some View {
         Circle()
-            .fill(isTalking ? Color.green : Color.accentColor)
+            .fill(isTalking ? DS.Palette.talkingLocal : DS.Palette.brand)
             .frame(width: size, height: size)
             .overlay {
                 if isTalking {

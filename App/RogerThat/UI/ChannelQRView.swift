@@ -15,7 +15,7 @@ struct ChannelQRView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: DS.Spacing.xl) {
                 Text("Have a friend scan this to join your channel")
                     .font(.headline)
                     .multilineTextAlignment(.center)
