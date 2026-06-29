@@ -83,12 +83,15 @@ Multipeer advertiser/browser, then continues regardless (real use re-checks).
 2. Both join the same channel (one creates, the other joins via the displayed code or QR).
 3. Text + presence flood over BLE: messages and the roster should appear on the other
    device within a second or two when within ~10 m.
-4. Hold the **Talk** button on one device — the other should show "X is talking" and
+4. Open the same channel on both: the **voice status banner** under the title should go
+   *Connecting to nearby devices…* → hidden (connected) within a few seconds.
+5. Hold the **Talk** button on one device — the other should show "X is talking" and
    play back the audio over Multipeer.
 
-> If text/roster works but voice doesn't, confirm both devices granted **Local Network**
-> permission and are within Bluetooth/Wi-Fi P2P range. One-directional voice most often
-> means a missing Local Network grant on one side.
+> Voice now **retries automatically** and **shows why it failed** instead of going silent:
+> the banner reads *Connecting…*, *No one else here yet*, or a permission warning with an
+> **Open Settings** button. If it sits on *Connecting…* forever, confirm both devices granted
+> **Local Network** permission and are within Bluetooth/Wi-Fi P2P range.
 
 ## Step 6 — Priority checks for recent changes
 
@@ -108,6 +111,22 @@ you run it. Focus a two-phone pass on:
   "Delete" removes it and its history for good. Deletion should feel instant (no lag).
 - **BLE console health:** the old `is not a valid peripheral` flood should be gone (at most an
   occasional reconnect every few seconds when a link actually drops).
+- **Voice connects + recovers (the demo blocker):** banner goes *Connecting → connected* on
+  both phones within a few seconds; kill/return one peer → it **auto-reconnects** (retry timer);
+  decline the first invite or airplane-toggle one side → it still connects eventually (no
+  permanent wedge); with 3 phones, no flapping. Console should no longer show endless
+  "Not in connected state, so giving up for participant".
+- **Voice failure is visible:** deny **Local Network** on one device → banner shows the
+  Local-Network warning + **Open Settings**; deny **Microphone** → mic warning, and the other
+  peer's audio still plays (receive path is independent of the mic).
+- **Design pass (visual QA):** consistent spacing/colors app-wide (the system runs on `DS`
+  tokens, accent = system blue, dark mode); empty states show on the chat ("No messages yet")
+  and members tab; copying an invite code fires a haptic + "Copied" toast; primary vs secondary
+  buttons read with the right weight. Spacing was snapped to a token scale, so a few elements
+  may shift ≤4pt — confirm nothing looks misaligned.
+- **Accessibility:** VoiceOver reads the talk button, floor/voice-status, and all icon buttons
+  (share, options, send, help, copy); turn on **Reduce Motion** and confirm the talk-button
+  pulse and onboarding transitions are calmed.
 
 ---
 
@@ -116,7 +135,8 @@ you run it. Focus a two-phone pass on:
 BLE, Multipeer Connectivity, and audio I/O **do not function in the Simulator** — those
 APIs compile but are no-ops there. Real testing needs hardware.
 
-The pure-logic Core suite (80 tests across 10 suites) is the only part that runs without a
+The pure-logic Core suite (92 tests across 12 suites — now incl. `MultipeerRetryPolicy` and
+`VoiceLinkStatus`) is the only part that runs without a
 device. On a **CLT-only host** `swift test` currently fails with `no such module 'Testing'`
 (Swift 6.3.2 toolchain issue) — verify Core with `swift build` from the CLI, and run the
 actual suite from Xcode via **Product → Test (⌘U)** against any Simulator. To run a single
